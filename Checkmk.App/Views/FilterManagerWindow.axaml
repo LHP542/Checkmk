@@ -15,10 +15,10 @@
 
       <Grid Grid.Row="1" ColumnDefinitions="260,*" Margin="12" ColumnSpacing="12">
 
-        <!-- Filter-Liste links. „Gehört zu" ist keine Zierde: Einem geteilten
-             Filter sieht man sonst nicht an, dass eine Änderung daran alle im
-             Team trifft. -->
-        <Grid Grid.Column="0" RowDefinitions="*,Auto" RowSpacing="6">
+        <!-- Filter-Liste links: die eigenen plus die abonnierten. Die Marke ist
+             keine Zierde — einem veröffentlichten Filter sieht man sonst nicht
+             an, dass eine Änderung daran alle Abonnenten trifft. -->
+        <Grid Grid.Column="0" RowDefinitions="*,Auto,Auto" RowSpacing="6">
           <ListBox Grid.Row="0" ItemsSource="{Binding Filters}"
                    SelectedItem="{Binding Selected}">
             <ListBox.ItemTemplate>
@@ -28,8 +28,8 @@
                              TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                   <Border Grid.Column="1" Background="#2A3F55" CornerRadius="3"
                           Padding="5,1" Margin="6,0,0,0"
-                          IsVisible="{Binding IsShared}">
-                    <TextBlock Text="{Binding TeamName}" FontSize="11" Foreground="#9CC4E4" />
+                          IsVisible="{Binding IsPublished}">
+                    <TextBlock Text="{Binding FachbereichName}" FontSize="11" Foreground="#9CC4E4" />
                   </Border>
                 </Grid>
               </DataTemplate>
@@ -40,10 +40,17 @@
                     IsEnabled="{Binding CanEdit}" />
             <Button Content="Löschen" Command="{Binding DeleteCommand}"
                     IsEnabled="{Binding CanDeleteSelected}" />
-            <Button Content="Teams…" Click="OnManageTeamsClick"
+            <Button Content="Katalog…" Click="OnCatalogClick"
+                    IsVisible="{Binding IsCentral}"
+                    ToolTip.Tip="Filter der Fachbereiche durchsehen und abonnieren." />
+            <Button Content="Fachbereiche…" Click="OnManageFachbereicheClick"
                     IsVisible="{Binding IsAdmin}"
-                    ToolTip.Tip="Teams anlegen und Anmeldungen zuordnen." />
+                    ToolTip.Tip="Fachbereiche anlegen, umbenennen, löschen." />
           </StackPanel>
+
+          <TextBlock Grid.Row="2" Text="{Binding SelectionHint}" FontSize="11"
+                     Foreground="#AAAAAA" TextWrapping="Wrap"
+                     IsVisible="{Binding SelectionHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </Grid>
 
         <!-- Editor rechts -->
@@ -57,11 +64,11 @@
           <!-- Der eigentliche Punkt an Punkt 26: Ein Filter, der dem Team
                gehört, steht der Urlaubsvertretung ohne Zutun zur Verfügung. -->
           <StackPanel Spacing="3" IsVisible="{Binding IsCentral}">
-            <TextBlock Text="Gehört zu" Foreground="#AAAAAA" FontSize="12" />
-            <ComboBox ItemsSource="{Binding Owners}" SelectedItem="{Binding EditOwner}"
+            <TextBlock Text="Veröffentlicht in" Foreground="#AAAAAA" FontSize="12" />
+            <ComboBox ItemsSource="{Binding Scopes}" SelectedItem="{Binding EditScope}"
                       HorizontalAlignment="Stretch"
                       DisplayMemberBinding="{Binding Label}"
-                      ToolTip.Tip="Persönlich sieht nur du. Ein Team-Filter gilt für alle im Team — auch für die Vertretung." />
+                      ToolTip.Tip="„nur für mich“ bleibt privat. In einen Fachbereich veröffentlicht steht der Filter im Katalog, und jeder kann ihn abonnieren." />
           </StackPanel>
           <StackPanel Spacing="3">
             <TextBlock Text="Hostname-Regex (case-insensitive, leer = Regel inaktiv)"

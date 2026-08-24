@@ -1,0 +1,62 @@
+<controls:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Checkmk.App.Controls"
+        xmlns:views="using:Checkmk.App.Views"
+        x:Class="Checkmk.App.Views.FilterCatalogDialog"
+        Width="780" Height="600"
+        Title="Filter-Katalog"
+        WindowStartupLocation="CenterOwner">
+
+  <Border BorderBrush="#3A3A3A" BorderThickness="1" Background="#1E1E1E">
+    <Grid RowDefinitions="40,Auto,Auto,*,Auto">
+
+      <controls:TitleBar Grid.Row="0" Title="Filter-Katalog" />
+
+      <TextBlock Grid.Row="1" Name="PromptText" Margin="16,12,16,0"
+                 Foreground="#AAAAAA" TextWrapping="Wrap" />
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="16,10,16,6">
+        <TextBox Grid.Column="0" Name="FilterBox"
+                 PlaceholderText="Suchen (Name, Fachbereich, Autor)…" />
+        <CheckBox Grid.Column="1" Name="OnlySubscribedBox" Content="nur abonnierte"
+                  ToolTip.Tip="Blendet aus, was du nicht abonniert hast — zum Aufräumen deiner Auswahl." />
+        <Button Grid.Column="2" Content="Nichts abonnieren" Click="OnClearAllClick" />
+      </Grid>
+
+      <!-- Nach Fachbereich gruppiert. Die Trefferliste je Filter steht bewusst
+           mit dran: „was macht der eigentlich" ist die erste Frage vor dem
+           Abonnieren, und ein Regex allein beantwortet sie nicht. -->
+      <ListBox Grid.Row="3" Name="CatalogList" Margin="16,0,16,0">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="views:CatalogEntry">
+            <Grid ColumnDefinitions="Auto,*" Margin="0,3" ColumnSpacing="10">
+              <CheckBox Grid.Column="0" IsChecked="{Binding IsSubscribed, Mode=TwoWay}"
+                        IsEnabled="{Binding CanUnsubscribe}"
+                        VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Meta}" FontSize="11"
+                             Foreground="#AAAAAA" Margin="8,0,0,0" />
+                </Grid>
+                <TextBlock Text="{Binding Rule}" FontSize="11" Foreground="#8FA8C0"
+                           FontFamily="Consolas,Courier New,monospace"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Matches}" FontSize="11" Foreground="#66BB6A" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="16">
+        <TextBlock Grid.Column="0" Name="CountText" VerticalAlignment="Center"
+                   Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" />
+        <Button Grid.Column="1" Content="Übernehmen" Click="OnOkClick"
+                Background="#123E6B" IsDefault="True" />
+        <Button Grid.Column="2" Content="Abbrechen" Click="OnCancelClick" IsCancel="True" />
+      </Grid>
+    </Grid>
+  </Border>
+</controls:ChromeWindow>

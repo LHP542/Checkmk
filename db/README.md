@@ -1,7 +1,7 @@
 # Datenbank `CheckMK_Copilot` (FOC-SQL01)
 
 Zentrale Ablage für alles, was **allen** Cockpit-Nutzern gemeinsam gehört:
-globale Vorgaben, Host-Metadaten, Bereiche der Karte, Teams und geteilte Filter.
+globale Vorgaben, Host-Metadaten, Bereiche der Karte und den Filter-Katalog.
 
 Was hier bewusst **nicht** hinein gehört: das Verbindungs-Secret und die
 SSH-Passwörter. Die bleiben user-lokal unter `%APPDATA%\Kroste\Checkmk\` und mit
@@ -42,6 +42,7 @@ nicht. Reihenfolge:
 004-area-sites.sql   Sichtbarkeit je Checkmk-Site (LHP / Schul_IT)
 005-area-hostpattern.sql  Namensmuster je Bereich fuer Zuordnungsvorschlaege
 006-area-hosttag.sql      Checkmk-Ortstag je Bereich (der bessere Weg zu 005)
+007-fachbereich-katalog.sql  Filter-Katalog je Fachbereich mit Abo (loest Teams ab)
 ```
 
 Optional, kein Schema-Eingriff und ohne Versionssprung:

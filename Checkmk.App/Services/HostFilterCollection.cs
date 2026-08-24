@@ -40,12 +40,50 @@ public sealed class HostFilterCollection : ObservableObject
     /// <summary>Dürfen Filter überhaupt geändert werden?</summary>
     public bool CanEdit => !_viewerMode && (_central is null || _central.CanWrite);
 
-    /// <summary>Teams für die Auswahl „gehört zu"; leer ohne Datenbank.</summary>
-    public IReadOnlyList<Checkmk.Data.TeamRow> Teams => _central?.Teams ?? [];
+    /// <summary>Fachbereiche für die Auswahl beim Veröffentlichen; leer ohne Datenbank.</summary>
+    public IReadOnlyList<Checkmk.Data.FachbereichRow> Fachbereiche
+        => _central?.Fachbereiche ?? [];
 
+    /// <summary>Darf Fachbereiche verwalten. Veröffentlichen darf ohnehin jeder.</summary>
     public bool IsAdmin => _central?.IsAdmin ?? false;
 
+    /// <summary>Anmeldename, gegen den die Autorschaft eines Filters geprüft wird.</summary>
+    public string UserName => _central?.UserName ?? Environment.UserName;
+
     public string StatusHint => _central?.StatusHint ?? "Filter: lokal";
+
+    /// <summary>Der Katalog samt der eigenen Abos — für den Abo-Dialog.</summary>
+    public Task<(IReadOnlyList<HostFilter> Catalog, IReadOnlyList<int> Subscribed)> LoadCatalogAsync()
+        => _central?.LoadCatalogAsync()
+           ?? Task.FromResult<(IReadOnlyList<HostFilter>, IReadOnlyList<int>)>(([], []));
+
+    /// <summary>
+    /// Übernimmt eine geänderte Abo-Auswahl und baut die Liste neu auf.
+    /// Bewusst ein eigener Weg neben <see cref="Persist"/>: Ein Abo ist keine
+    /// Änderung am Filter, sondern an meiner Sicht darauf.
+    /// </summary>
+    public async Task SubscribeAsync(IReadOnlyList<int> filterIds)
+    {
+        if (_central is null) return;
+
+        LastError = await _central.SetSubscriptionsAsync(filterIds).ConfigureAwait(true);
+        if (LastError is not null) return;
+
+        var activeName = _active?.Name;
+        _suppressPersist = true;
+        try
+        {
+            Filters.Clear();
+            foreach (var f in _central.Current) Filters.Add(f);
+            _active = string.IsNullOrEmpty(activeName)
+                ? null
+                : Filters.FirstOrDefault(f => f.Name == activeName);
+        }
+        finally { _suppressPersist = false; }
+
+        OnPropertyChanged(nameof(Active));
+        OnPropertyChanged(nameof(StatusHint));
+    }
 
     private HostFilter? _active;
     public HostFilter? Active

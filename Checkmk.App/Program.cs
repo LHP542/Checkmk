@@ -293,12 +293,11 @@ internal static class Program
                 new DbHostDomainStore(cockpitDb, new HostDomainStore()));
             services.AddSingleton<IHostDomainStore>(sp => sp.GetRequiredService<DbHostDomainStore>());
             services.AddSingleton<IAreaStore>(_ => new AreaStore(cockpitDb));
-            services.AddSingleton<ITeamStore>(_ => new TeamStore(cockpitDb));
-            services.AddSingleton<IFilterStore>(sp =>
-                new FilterStore(cockpitDb, sp.GetRequiredService<ITeamStore>()));
+            services.AddSingleton<IFachbereichStore>(_ => new FachbereichStore(cockpitDb));
+            services.AddSingleton<IFilterStore>(_ => new FilterStore(cockpitDb));
             services.AddSingleton(sp => new CentralFilterService(
                 sp.GetRequiredService<IFilterStore>(),
-                sp.GetRequiredService<ITeamStore>(),
+                sp.GetRequiredService<IFachbereichStore>(),
                 DatabaseConnection.FilterCachePath,
                 Environment.UserName));
             services.AddSingleton<AreaViewModel>();

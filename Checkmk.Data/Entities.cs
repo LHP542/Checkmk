@@ -93,7 +93,6 @@ public sealed class Area
 
     public string? MapLayerKey { get; set; }
     public int SortOrder { get; set; }
-    public int? OwningTeamId { get; set; }
     public DateTime ChangedAtUtc { get; set; }
     public string ChangedBy { get; set; } = "";
 }
@@ -129,37 +128,13 @@ public sealed class HostArea
 }
 
 /// <summary>
-/// Ein Team — reine <b>Organisation, kein Zugriffsschutz</b>. Alle 48 Personen
-/// duerfen alle Hosts sehen, und das Laufzeitkonto der Anwendung kann diese
-/// Tabellen ohnehin schreiben. Teams buendeln geteilte Filter und Sichten.
-/// </summary>
-public sealed class Team
-{
-    public int TeamId { get; set; }
-    public string Name { get; set; } = "";
-    public string? Description { get; set; }
-    public DateTime CreatedAtUtc { get; set; }
-}
-
-/// <summary>
-/// Mitgliedschaft, n:m — wer AD und Exchange macht, steht in beiden Teams.
-/// <see cref="UserName"/> ist der blanke Windows-Anmeldename ohne
-/// Domaenenpraefix.
-/// </summary>
-public sealed class TeamMember
-{
-    public int TeamId { get; set; }
-    public string UserName { get; set; } = "";
-}
-
-/// <summary>
-/// Wer Teams anlegen und Anmeldungen zuordnen darf.
+/// Wer Fachbereiche anlegen und fremde Katalog-Eintraege aufraeumen darf.
 ///
 /// <b>Ist die Tabelle leer, gilt jeder als Admin</b> — eine leere Tabelle heisst
 /// „noch nicht eingerichtet", und die Alternative waere eine Funktion, die ohne
 /// einen SQL-Eingriff niemand benutzen kann. Sobald der erste Eintrag steht,
-/// greift die Liste. Das ist vertretbar, weil Teams ausdruecklich kein
-/// Zugriffsschutz sind.
+/// greift die Liste. Das ist vertretbar, weil der Katalog Organisation ist und
+/// kein Zugriffsschutz.
 /// </summary>
 public sealed class AppAdmin
 {
@@ -169,18 +144,37 @@ public sealed class AppAdmin
 }
 
 /// <summary>
-/// Ein Host-Filter. <see cref="TeamId"/> gesetzt = Team-Filter,
-/// <see cref="OwnerUserName"/> gesetzt = persoenlich; genau eins von beidem
-/// (CHECK in der Datenbank).
+/// Ein Fachbereich — die Gruppe im Filter-Katalog.
 ///
-/// Der Alltagsgewinn steckt in der ersten Variante: Heute baut sich jeder der
-/// 48 seinen eigenen, und die Urlaubsvertretung faengt bei null an.
+/// <b>Ordnungsbegriff, keine Zugriffsgrenze.</b> Er sagt, wo ein Filter im
+/// Katalog einsortiert ist, nicht wer ihn sehen darf. Sehen darf ihn, wer ihn
+/// abonniert.
+/// </summary>
+public sealed class Fachbereich
+{
+    public int FachbereichId { get; set; }
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+}
+
+/// <summary>
+/// Ein Host-Filter.
+///
+/// <see cref="OwnerUserName"/> ist <b>immer</b> gesetzt — auch bei einem
+/// veroeffentlichten Filter. Ein Filter hat einen Autor, und der darf ihn
+/// spaeter aendern, waehrend alle anderen ihn nur abonnieren. Ohne diese
+/// Trennung waere ein Katalog-Eintrag herrenlos und niemand koennte einen
+/// Tippfehler darin korrigieren.
+///
+/// <see cref="FachbereichId"/> <c>null</c> = persoenlich, gesetzt = im Katalog
+/// veroeffentlicht.
 /// </summary>
 public sealed class HostFilterRow
 {
     public int HostFilterId { get; set; }
-    public int? TeamId { get; set; }
-    public string? OwnerUserName { get; set; }
+    public int? FachbereichId { get; set; }
+    public string OwnerUserName { get; set; } = "";
     public string Site { get; set; } = "";
     public string Name { get; set; } = "";
     public string? HostNameRegex { get; set; }
@@ -193,4 +187,18 @@ public sealed class HostFilterHostRow
 {
     public int HostFilterId { get; set; }
     public string HostName { get; set; } = "";
+}
+
+/// <summary>
+/// Wer welchen veroeffentlichten Filter in seiner Auswahl haben will.
+///
+/// Das ist der Kern des Katalog-Modells: Nicht die Zugehoerigkeit zu einer
+/// Gruppe entscheidet, was jemand sieht, sondern seine eigene Entscheidung.
+/// Damit entfaellt jede Mitgliederpflege.
+/// </summary>
+public sealed class HostFilterSubscription
+{
+    public int HostFilterId { get; set; }
+    public string UserName { get; set; } = "";
+    public DateTime SubscribedAtUtc { get; set; }
 }

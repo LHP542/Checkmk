@@ -342,25 +342,40 @@ Buttons:
 - **„Aktivieren"** — den gewählten Filter sofort aktiv setzen.
 - **„Filter deaktivieren"** — kein Filter aktiv, alle Hosts sichtbar.
 
-### Filter im Team teilen
+### Filter teilen: der Katalog
 
 Bisher baute sich jeder seinen eigenen Filtersatz — und wenn der
-Netzwerkkollege im Urlaub war, fing die Vertretung bei null an. Setz einen
-Filter im Feld **„Gehört zu"** auf ein Team, und er steht allen im Team zur
-Verfügung. In der Liste links trägt er dann den Team-Namen als Marke; daran
-siehst du, dass eine Änderung nicht nur dich betrifft.
+Netzwerkkollege im Urlaub war, fing die Vertretung bei null an.
 
-Wer **in keinem Team** ist, sieht **alle** Team-Filter — keine Zuordnung heißt
-„alles", nicht „nichts". Persönliche Filter sieht immer nur ihr Besitzer.
+**Veröffentlichen:** Setz einen Filter im Feld **„Veröffentlicht in"** auf einen
+Fachbereich. Er steht dann im Katalog, und jeder kann ihn abonnieren. In der
+Liste links trägt er den Fachbereich als Marke; daran siehst du, dass eine
+Änderung daran alle Abonnenten betrifft.
 
-Teams legt ein Admin über **„Teams…"** an (Name, Beschreibung, Mitglieder als
-Windows-Anmeldenamen). **Teams sind Organisation, kein Zugriffsschutz** — alle
-dürfen ohnehin alle Hosts sehen; die echte Grenze ist deine Checkmk-Rolle.
-Solange in `dbo.AppAdmin` niemand steht, darf jeder Teams verwalten; ab dem
-ersten Eintrag nur noch die Genannten.
+**Abonnieren:** Knopf **„Katalog…"**. Dort steht alles, was Fachbereiche
+veröffentlicht haben — mit Autor, Abonnentenzahl und, was am meisten hilft,
+**wie viele Hosts der Filter gerade trifft**. Anhaken, übernehmen, fertig; der
+Filter erscheint in deiner Auswahl.
 
-Ein Team zu löschen nimmt seine geteilten Filter mit. Der Dialog sagt vorher,
-wie viele es sind, und will einen zweiten Klick.
+> Ein Filter kommt **nicht** von allein in dein Dropdown, nur weil ihn jemand
+> veröffentlicht hat. Du entscheidest, was du siehst. Deine eigenen Filter sind
+> immer dabei und lassen sich nicht abbestellen.
+
+**Ändern darf nur der Autor.** Ein abonnierter Filter steht bei dir in der
+Liste, die Felder sind aber gesperrt — sonst würde deine Korrektur ungefragt
+bei allen anderen Abonnenten landen. Willst du eine eigene Variante, kopierst
+du ihn: „Neu", Regex übernehmen, anpassen.
+
+**Fachbereiche** legt ein Admin über **„Fachbereiche…"** an. Sie sind reine
+Ordnung im Katalog, **kein Zugriffsschutz** — veröffentlichen und abonnieren
+darf jeder, unabhängig davon, in welchem Fachbereich er arbeitet. Die echte
+Grenze ist deine Checkmk-Rolle. Solange in `dbo.AppAdmin` niemand steht, darf
+jeder Fachbereiche verwalten; ab dem ersten Eintrag nur noch die Genannten.
+
+Einen Fachbereich zu löschen nimmt seine Filter **nicht** mit: Sie gehen an
+ihre Autoren zurück und bleiben dort als persönliche Filter. Nur die Abos
+verfallen. Der Dialog sagt vorher, wie viele es sind, und will einen zweiten
+Klick.
 
 **Ohne zentrale Datenbank** ändert sich nichts: Favoriten liegen dann
 **user-lokal** unter `%APPDATA%\Kroste\Checkmk\filter.json`, pro Site ein
@@ -666,8 +681,8 @@ Bei neuerer Version erscheint in der Statusleiste ein gelbes Feld **„Update au
 | Kopie der zentralen Einstellungen (Ausfallschutz) | `%APPDATA%\Kroste\Checkmk\globals-cache.json` | lokal, automatisch |
 | Verbindung (Host/Site/User/Secret) | `%APPDATA%\Kroste\Checkmk\settings.json` | lokal, DPAPI-verschlüsselt |
 | SSH-Logins (User+Passwort je Host) | `%APPDATA%\Kroste\Checkmk\ssh-creds.json` | lokal, DPAPI-verschlüsselt |
-| Filter/Favoriten (pro Site) | Datenbank, Tabellen `HostFilter` / `HostFilterHost` | zentral; Team-Filter für alle im Team, persönliche nur für dich |
-| Teams und Mitgliedschaft | Datenbank, Tabellen `Team` / `TeamMember` / `AppAdmin` | zentral |
+| Filter/Favoriten (pro Site) | Datenbank, Tabellen `HostFilter` / `HostFilterHost` | zentral; eigene plus abonnierte aus dem Katalog |
+| Fachbereiche und Abos | Datenbank, Tabellen `Fachbereich` / `HostFilterSubscription` / `AppAdmin` | zentral |
 | Filter **ohne** Datenbank | `%APPDATA%\Kroste\Checkmk\filter.json` | lokal; wird mit Datenbank einmalig übernommen |
 | Kopie der Filter (Ausfallschutz) | `%APPDATA%\Kroste\Checkmk\filter-cache.json` | lokal, automatisch |
 | Übersprungene Update-Version | `%APPDATA%\Kroste\Checkmk\updates.json` | lokal |
@@ -859,7 +874,7 @@ demselben Binary.
 | RDP / SSH / Ping / Host-Einstellungen | da | weg |
 | Plugins aus `plugins\` | werden geladen | werden **nicht** geladen |
 | Spalten der Tabelle | fest | aus der Datei |
-| Host-Filter | persönliche und Team-Filter | **nur** aus der Datei |
+| Host-Filter | eigene und abonnierte | **nur** aus der Datei |
 | Bei neuem Problem | Toast (wenn im Tray) | Toast **+ Fenster springt auf** |
 | Favoriten anlegen / „Filter verwalten…" | da | weg |
 | Host-Details, Baumansicht, Freitext-Filter, CSV-Export | da | bleiben da |

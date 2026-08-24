@@ -25,25 +25,37 @@ public sealed class HostFilter
     /// <summary>Id in der zentralen Datenbank; 0 = nur lokal (kein Datenbankzugang).</summary>
     public int Id { get; set; }
 
-    /// <summary>Gesetzt = Team-Filter, sonst persoenlich.</summary>
-    public int? TeamId { get; set; }
+    /// <summary>Gesetzt = im Katalog veroeffentlicht, sonst persoenlich.</summary>
+    public int? FachbereichId { get; set; }
 
-    /// <summary>Team-Name zur Anzeige. Nur Laufzeit, kommt aus dem Team-Store.</summary>
+    /// <summary>Fachbereichs-Name zur Anzeige. Nur Laufzeit.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public string? TeamName { get; set; }
+    public string? FachbereichName { get; set; }
+
+    /// <summary>Autor. Wer nicht der Autor ist, darf nur abonnieren.</summary>
+    public string Owner { get; set; } = "";
+
+    /// <summary>Wie viele diesen Filter abonniert haben — nur Anzeige.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int Subscribers { get; set; }
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsShared => TeamId is not null;
+    public bool IsPublished => FachbereichId is not null;
+
+    /// <summary>Darf dieser Anwender den Filter aendern? Nur der Autor.</summary>
+    public bool IsAuthor(string user)
+        => string.IsNullOrEmpty(Owner)
+        || Owner.Equals(user, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// „Gehoert zu" fuer die Liste im Filter-Manager. Ohne diese Spalte sieht
-    /// man einem geteilten Filter nicht an, dass eine Aenderung daran alle im
-    /// Team trifft.
+    /// „Herkunft" fuer die Liste im Filter-Manager. Ohne diese Angabe sieht man
+    /// einem veroeffentlichten Filter nicht an, dass eine Aenderung daran alle
+    /// Abonnenten trifft.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public string OwnerDisplay => TeamId is null
+    public string OriginDisplay => FachbereichId is null
         ? "persönlich"
-        : $"Team {TeamName ?? TeamId.ToString()}";
+        : FachbereichName ?? $"Fachbereich {FachbereichId}";
 
     /// <summary>
     /// Nur zur Laufzeit vorhanden, nie in <c>filter.json</c>. Gesetzt fuer den aus

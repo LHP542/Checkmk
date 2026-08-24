@@ -4,29 +4,53 @@ using NLog;
 namespace Checkmk.Data;
 
 /// <summary>
-/// Ein Filter, wie ihn die Anwendung sieht. <see cref="TeamId"/> gesetzt =
-/// geteilt, sonst persönlich.
+/// Ein Filter, wie ihn die Anwendung sieht.
 /// </summary>
+/// <param name="FachbereichId"><c>null</c> = persönlich, gesetzt = im Katalog
+/// veröffentlicht.</param>
+/// <param name="OwnerUserName">Der Autor — <b>immer</b> gesetzt, auch bei einem
+/// veröffentlichten Filter. Er darf ihn ändern, alle anderen nur abonnieren.</param>
+/// <param name="Subscribers">Wie viele ihn abonniert haben. Nur für die Anzeige
+/// im Katalog („12 Abonnenten" sagt mehr über einen Filter als jede
+/// Beschreibung).</param>
 public sealed record SharedFilter(
     int HostFilterId,
-    int? TeamId,
-    string? OwnerUserName,
+    int? FachbereichId,
+    string OwnerUserName,
     string Site,
     string Name,
     string? HostNameRegex,
-    IReadOnlyList<string> Hosts)
+    IReadOnlyList<string> Hosts,
+    int Subscribers = 0)
 {
-    public bool IsShared => TeamId is not null;
+    public bool IsPublished => FachbereichId is not null;
+
+    public bool IsAuthor(string user)
+        => OwnerUserName.Equals(user, StringComparison.OrdinalIgnoreCase);
 }
 
 public interface IFilterStore
 {
     /// <summary>
-    /// Filter, die dieser Anwender in dieser Site sehen darf: die eigenen
-    /// persönlichen plus die Filter seiner Teams. <b>Wer in keinem Team ist,
-    /// sieht alle Team-Filter</b> — dieselbe Regel wie überall sonst hier.
+    /// Filter, die dieser Anwender in seiner Auswahl hat: seine eigenen plus
+    /// die <b>abonnierten</b> aus dem Katalog.
+    ///
+    /// <b>Nicht</b> automatisch alles Veröffentlichte — das ist der Kern des
+    /// Modells. Was im Katalog steht, sieht man im Katalog; im Dropdown landet
+    /// nur, was man selbst dazugenommen hat.
     /// </summary>
     Task<IReadOnlyList<SharedFilter>> LoadAsync(string site, string user,
+        CancellationToken ct = default);
+
+    /// <summary>Alle veröffentlichten Filter dieser Site — der Katalog.</summary>
+    Task<IReadOnlyList<SharedFilter>> LoadCatalogAsync(string site,
+        CancellationToken ct = default);
+
+    /// <summary>Ids der Filter, die dieser Anwender abonniert hat.</summary>
+    Task<IReadOnlyList<int>> LoadSubscriptionsAsync(string user, CancellationToken ct = default);
+
+    /// <summary>Setzt die Abos eines Anwenders auf genau diese Menge.</summary>
+    Task SetSubscriptionsAsync(string user, IReadOnlyList<int> filterIds,
         CancellationToken ct = default);
 
     /// <summary>Legt an oder aktualisiert. Gibt die Id zurück.</summary>
@@ -37,36 +61,29 @@ public interface IFilterStore
     /// <summary>
     /// Übernimmt die persönlichen Filter aus <c>filter.json</c> — <b>genau
     /// einmal</b>, nämlich nur wenn dieser Anwender in dieser Site noch keinen
-    /// einzigen persönlichen Filter in der Datenbank hat. Danach ist die
-    /// Tabelle die Wahrheit; sonst überschriebe ein Rechner mit altem
-    /// Dateistand später zentrale Änderungen.
+    /// einzigen Filter in der Datenbank hat. Danach ist die Tabelle die
+    /// Wahrheit; sonst überschriebe ein Rechner mit altem Dateistand später
+    /// zentrale Änderungen.
     /// </summary>
     Task<int> ImportLegacyIfEmptyAsync(string site, string user,
         IReadOnlyList<SharedFilter> fromFile, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Host-Filter aus der zentralen Datenbank.
+/// Host-Filter aus der zentralen Datenbank, als <b>Katalog mit Abonnement</b>.
 ///
-/// Der Grund, sie aus <c>filter.json</c> herauszuholen: Heute baut sich jeder
-/// der 48 seinen eigenen Filter, und wenn der Netzwerkkollege im Urlaub ist,
-/// fängt die Vertretung bei null an. Ein Team-Filter wird einmal gebaut und
-/// gilt für alle im Team.
+/// Der Alltagsgewinn: Ein guter Filter wird einmal gebaut und veröffentlicht;
+/// wer ihn braucht, hakt ihn an. Niemand muss dafür Mitgliederlisten pflegen —
+/// genau das war die Schwäche des vorherigen Team-Modells.
 ///
-/// <b>Geschrieben wird immer einzeln, nie der ganze Satz.</b> Ein
+/// <para><b>Geschrieben wird immer einzeln, nie der ganze Satz.</b> Ein
 /// Read-Modify-Write über alle Filter würde bei zwei gleichzeitigen Bearbeitern
-/// lautlos Einträge verlieren — genau der Fehler, an dem die geteilte
-/// <c>hosts.json</c> gestorben ist.
+/// lautlos Einträge verlieren — der Fehler, an dem die geteilte
+/// <c>hosts.json</c> gestorben ist.</para>
 /// </summary>
 public sealed class FilterStore(CockpitDatabase database) : IFilterStore
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
-    private readonly ITeamStore _teams = new TeamStore(database);
-
-    /// <summary>Für den Fall, dass der Aufrufer schon einen Team-Store hat.</summary>
-    public FilterStore(CockpitDatabase database, ITeamStore teams) : this(database)
-        => _teams = teams;
 
     public async Task<IReadOnlyList<SharedFilter>> LoadAsync(string site, string user,
         CancellationToken ct = default)
@@ -75,33 +92,109 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
 
         await using var db = database.CreateContext();
 
+        var subscribed = await db.HostFilterSubscriptions.AsNoTracking()
+            .Where(s => s.UserName == user)
+            .Select(s => s.HostFilterId)
+            .ToListAsync(ct).ConfigureAwait(false);
+
         var rows = await db.HostFilters.AsNoTracking()
-            .Where(f => f.Site == site)
+            .Where(f => f.Site == site
+                     && (f.OwnerUserName == user
+                         // Abonniert zaehlt nur, solange der Filter auch
+                         // veroeffentlicht ist — ein zurueckgezogener Filter
+                         // verschwindet aus fremden Auswahlen.
+                         || (f.FachbereichId != null && subscribed.Contains(f.HostFilterId))))
             .OrderBy(f => f.Name)
             .ToListAsync(ct).ConfigureAwait(false);
 
-        var myTeams = _teams.Current.TeamsOf(user).Select(t => t.TeamId).ToHashSet();
+        return await HydrateAsync(db, rows, ct).ConfigureAwait(false);
+    }
 
-        var visible = rows.Where(f =>
-                (f.OwnerUserName != null
-                 && f.OwnerUserName.Equals(user, StringComparison.OrdinalIgnoreCase))
-                // Wer in keinem Team ist, sieht alle Team-Filter statt keiner.
-                || (f.TeamId is { } t && (myTeams.Count == 0 || myTeams.Contains(t))))
-            .ToList();
+    public async Task<IReadOnlyList<SharedFilter>> LoadCatalogAsync(string site,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(site)) return [];
 
-        var ids = visible.Select(f => f.HostFilterId).ToList();
+        await using var db = database.CreateContext();
+
+        var rows = await db.HostFilters.AsNoTracking()
+            .Where(f => f.Site == site && f.FachbereichId != null)
+            .OrderBy(f => f.Name)
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        return await HydrateAsync(db, rows, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Include-Listen und Abonnentenzahl in einem Rutsch nachladen —
+    /// statt je Filter eine Abfrage.</summary>
+    private static async Task<IReadOnlyList<SharedFilter>> HydrateAsync(
+        CockpitDbContext db, List<HostFilterRow> rows, CancellationToken ct)
+    {
+        if (rows.Count == 0) return [];
+
+        var ids = rows.Select(f => f.HostFilterId).ToList();
+
         var hosts = await db.HostFilterHosts.AsNoTracking()
             .Where(h => ids.Contains(h.HostFilterId))
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        var counts = await db.HostFilterSubscriptions.AsNoTracking()
+            .Where(s => ids.Contains(s.HostFilterId))
+            .GroupBy(s => s.HostFilterId)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
             .ToListAsync(ct).ConfigureAwait(false);
 
         var byFilter = hosts.GroupBy(h => h.HostFilterId)
             .ToDictionary(g => g.Key,
                           g => (IReadOnlyList<string>)[.. g.Select(x => x.HostName)
                               .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)]);
+        var subs = counts.ToDictionary(c => c.Id, c => c.Count);
 
-        return [.. visible.Select(f => new SharedFilter(
-            f.HostFilterId, f.TeamId, f.OwnerUserName, f.Site, f.Name, f.HostNameRegex,
-            byFilter.GetValueOrDefault(f.HostFilterId, [])))];
+        return [.. rows.Select(f => new SharedFilter(
+            f.HostFilterId, f.FachbereichId, f.OwnerUserName, f.Site, f.Name, f.HostNameRegex,
+            byFilter.GetValueOrDefault(f.HostFilterId, []),
+            subs.GetValueOrDefault(f.HostFilterId)))];
+    }
+
+    public async Task<IReadOnlyList<int>> LoadSubscriptionsAsync(string user,
+        CancellationToken ct = default)
+    {
+        await using var db = database.CreateContext();
+        return await db.HostFilterSubscriptions.AsNoTracking()
+            .Where(s => s.UserName == user)
+            .Select(s => s.HostFilterId)
+            .ToListAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Setzt die Abos eines Anwenders. Gediffed, nicht gelöscht-und-neu — sonst
+    /// ginge bei jedem Speichern der Zeitstempel verloren, und ein
+    /// gleichzeitiger Lauf könnte fremde Zeilen treffen.
+    /// </summary>
+    public async Task SetSubscriptionsAsync(string user, IReadOnlyList<int> filterIds,
+        CancellationToken ct = default)
+    {
+        await using var db = database.CreateContext();
+
+        var existing = await db.HostFilterSubscriptions
+            .Where(s => s.UserName == user)
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        var wanted = filterIds.Distinct().ToHashSet();
+
+        foreach (var gone in existing.Where(e => !wanted.Contains(e.HostFilterId)))
+            db.HostFilterSubscriptions.Remove(gone);
+
+        foreach (var added in wanted.Where(w => !existing.Any(e => e.HostFilterId == w)))
+            db.HostFilterSubscriptions.Add(new HostFilterSubscription
+            {
+                HostFilterId = added,
+                UserName = user,
+                SubscribedAtUtc = DateTime.UtcNow
+            });
+
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        Log.Info("Abos von {User}: {Count} Filter.", user, wanted.Count);
     }
 
     public async Task<int> SaveAsync(SharedFilter filter, string changedBy,
@@ -118,17 +211,17 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
 
             // Von jemand anderem geloescht, waehrend der Dialog offen stand:
             // dann neu anlegen statt still nichts zu tun.
-            if (found is null) { row = New(); db.HostFilters.Add(row); }
+            if (found is null) { row = new HostFilterRow(); db.HostFilters.Add(row); }
             else row = found;
         }
         else
         {
-            row = New();
+            row = new HostFilterRow();
             db.HostFilters.Add(row);
         }
 
-        row.TeamId = filter.TeamId;
-        row.OwnerUserName = filter.TeamId is null ? filter.OwnerUserName : null;
+        row.FachbereichId = filter.FachbereichId;
+        row.OwnerUserName = filter.OwnerUserName;
         row.Site = filter.Site;
         row.Name = filter.Name.Trim();
         row.HostNameRegex = string.IsNullOrWhiteSpace(filter.HostNameRegex)
@@ -140,11 +233,10 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
 
         await ReplaceHostsAsync(db, row.HostFilterId, filter.Hosts, ct).ConfigureAwait(false);
 
-        Log.Info("Filter gespeichert: '{Name}' ({Scope}, Site {Site}).",
-            row.Name, row.TeamId is null ? "persoenlich" : $"Team {row.TeamId}", row.Site);
+        Log.Info("Filter gespeichert: '{Name}' ({Scope}, Site {Site}, Autor {Owner}).",
+            row.Name, row.FachbereichId is null ? "persoenlich" : $"Katalog {row.FachbereichId}",
+            row.Site, row.OwnerUserName);
         return row.HostFilterId;
-
-        HostFilterRow New() => new();
     }
 
     /// <summary>
@@ -172,8 +264,8 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
     }
 
     /// <summary>
-    /// Löscht einen Filter. Die Include-Liste nimmt die Datenbank per
-    /// <c>ON DELETE CASCADE</c> mit — sie hier zusätzlich zu entfernen wäre
+    /// Löscht einen Filter. Include-Liste und Abonnements nimmt die Datenbank
+    /// per <c>ON DELETE CASCADE</c> mit — sie hier zusätzlich zu entfernen wäre
     /// nicht nur überflüssig, sondern falsch: EF würde DELETEs schicken, die
     /// nach dem Cascade keine Zeile mehr treffen, und das als
     /// Nebenläufigkeitskonflikt melden.
@@ -202,7 +294,8 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
         if (any) return 0;
 
         foreach (var f in fromFile)
-            await SaveAsync(f with { HostFilterId = 0, TeamId = null, OwnerUserName = user, Site = site },
+            await SaveAsync(
+                f with { HostFilterId = 0, FachbereichId = null, OwnerUserName = user, Site = site },
                 user, ct).ConfigureAwait(false);
 
         Log.Info("{Count} persoenliche Filter aus filter.json uebernommen (Site {Site}).",

@@ -19,11 +19,13 @@ public enum FilterOrigin
 }
 
 /// <summary>
-/// Host-Filter aus der zentralen Datenbank, mit Ausfall-Cache.
+/// Host-Filter aus der zentralen Datenbank als <b>Katalog mit Abonnement</b>,
+/// mit Ausfall-Cache.
 ///
-/// Der Alltagsgewinn: Heute baut sich jeder der 48 seinen eigenen Filter, und
-/// wenn der Netzwerkkollege im Urlaub ist, fängt die Vertretung bei null an.
-/// Ein Team-Filter wird einmal gebaut und gilt für alle im Team.
+/// Der Alltagsgewinn: Ein guter Filter wird einmal gebaut und in den Katalog
+/// gestellt; wer ihn braucht, hakt ihn an. Niemand pflegt dafür Mitgliederlisten
+/// — genau das war die Schwäche des vorherigen Team-Modells, das deshalb ersetzt
+/// wurde.
 ///
 /// <para><b>Bei Ausfall wird nicht geschrieben.</b> Anders als bei den globalen
 /// Einstellungen, die nur gelesen werden, sind Filter bearbeitbar — und eine
@@ -33,7 +35,7 @@ public enum FilterOrigin
 /// </summary>
 public sealed class CentralFilterService(
     IFilterStore filters,
-    ITeamStore teams,
+    IFachbereichStore fachbereiche,
     string cachePath,
     string userName)
 {
@@ -49,11 +51,13 @@ public sealed class CentralFilterService(
     /// <summary>Schreiben geht nur gegen die echte Datenbank.</summary>
     public bool CanWrite => Origin == FilterOrigin.Central;
 
-    /// <summary>Alle Teams — für die Auswahl „gehört zu" im Filter-Manager.</summary>
-    public IReadOnlyList<TeamRow> Teams => teams.Current.Teams;
+    /// <summary>Alle Fachbereiche — für die Auswahl beim Veröffentlichen.</summary>
+    public IReadOnlyList<FachbereichRow> Fachbereiche => fachbereiche.Current.Fachbereiche;
 
-    /// <summary>Darf dieser Anwender Teams verwalten? Leere Admin-Tabelle = jeder.</summary>
-    public bool IsAdmin => teams.Current.IsAdmin(userName);
+    /// <summary>Darf dieser Anwender Fachbereiche verwalten? Leere Admin-Tabelle
+    /// = jeder. <b>Veröffentlichen darf ohnehin jeder</b>, dafür braucht es das
+    /// hier nicht.</summary>
+    public bool IsAdmin => fachbereiche.Current.IsAdmin(userName);
 
     public string UserName => userName;
 
@@ -66,10 +70,10 @@ public sealed class CentralFilterService(
     };
 
     /// <summary>
-    /// Lädt die Filter dieser Site. <paramref name="legacy"/> sind die aus
-    /// <c>filter.json</c>; sie werden genau einmal übernommen, nämlich wenn
-    /// dieser Anwender in dieser Site noch keinen persönlichen Filter in der
-    /// Datenbank hat.
+    /// Lädt die Filter dieser Site: die eigenen plus die abonnierten.
+    /// <paramref name="legacy"/> sind die aus <c>filter.json</c>; sie werden
+    /// genau einmal übernommen, nämlich wenn dieser Anwender in dieser Site noch
+    /// keinen Filter in der Datenbank hat.
     /// </summary>
     public async Task<IReadOnlyList<HostFilter>> LoadAsync(string site,
         IReadOnlyList<HostFilter> legacy, CancellationToken ct = default)
@@ -78,7 +82,7 @@ public sealed class CentralFilterService(
 
         try
         {
-            await teams.RefreshAsync(ct).ConfigureAwait(false);
+            await fachbereiche.RefreshAsync(ct).ConfigureAwait(false);
 
             var imported = await filters.ImportLegacyIfEmptyAsync(site, userName,
                 [.. legacy.Select(f => ToShared(f, site))], ct).ConfigureAwait(false);
@@ -102,6 +106,43 @@ public sealed class CentralFilterService(
     }
 
     /// <summary>
+    /// Der Katalog: alle veröffentlichten Filter dieser Site, samt der Angabe,
+    /// welche davon dieser Anwender abonniert hat.
+    /// </summary>
+    public async Task<(IReadOnlyList<HostFilter> Catalog, IReadOnlyList<int> Subscribed)>
+        LoadCatalogAsync(CancellationToken ct = default)
+    {
+        var rows = await filters.LoadCatalogAsync(_site, ct).ConfigureAwait(false);
+        var subs = await filters.LoadSubscriptionsAsync(userName, ct).ConfigureAwait(false);
+        return ([.. rows.Select(ToModel)], subs);
+    }
+
+    /// <summary>Setzt die Abos auf genau diese Menge und lädt neu.</summary>
+    public async Task<string?> SetSubscriptionsAsync(IReadOnlyList<int> filterIds,
+        CancellationToken ct = default)
+    {
+        if (!CanWrite)
+            return "Die Datenbank ist nicht erreichbar — Abos sind gerade nicht änderbar.";
+
+        try
+        {
+            await filters.SetSubscriptionsAsync(userName, filterIds, ct).ConfigureAwait(false);
+            var rows = await filters.LoadAsync(_site, userName, ct).ConfigureAwait(false);
+            _loaded = [.. rows.Select(ToModel)];
+            WriteCache(_site, _loaded);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Abos konnten nicht gespeichert werden.");
+            return $"Speichern fehlgeschlagen: {ex.Message}";
+        }
+    }
+
+    /// <summary>Der zuletzt geladene Stand — für die Liste nach einem Abo-Wechsel.</summary>
+    public IReadOnlyList<HostFilter> Current => Snapshot();
+
+    /// <summary>
     /// Schreibt die Unterschiede zwischen <paramref name="current"/> und dem
     /// zuletzt geladenen Stand.
     ///
@@ -109,8 +150,12 @@ public sealed class CentralFilterService(
     /// Filter würde bei zwei gleichzeitigen Bearbeitern lautlos Einträge
     /// verlieren — genau der Fehler, an dem die geteilte <c>hosts.json</c>
     /// gestorben ist. Gelöscht wird ausschließlich, was in <i>meinem</i>
-    /// Ausgangsstand stand: Ein Filter, den ein Kollege inzwischen angelegt hat,
-    /// ist mir unbekannt und bleibt deshalb unangetastet.
+    /// Ausgangsstand stand.
+    ///
+    /// <para><b>Fremde Filter werden nie geschrieben.</b> Ein abonnierter Filter
+    /// gehört seinem Autor; er steht zwar in meiner Liste, aber eine Änderung
+    /// daran ginge alle Abonnenten an. Deshalb überspringt der Diff alles, wo
+    /// ich nicht der Autor bin — der Dialog sperrt die Felder ohnehin schon.</para>
     /// </summary>
     public async Task<string?> PersistAsync(IReadOnlyList<HostFilter> current,
         CancellationToken ct = default)
@@ -122,11 +167,13 @@ public sealed class CentralFilterService(
         {
             var keep = current.Where(f => !f.IsTransient).ToList();
 
+            // Nur eigene Filter loeschen. Ein abonnierter, den ich aus meiner
+            // Liste nehme, wird abbestellt — nicht geloescht.
             foreach (var gone in _loaded.Where(l =>
-                l.Id > 0 && !keep.Any(k => k.Id == l.Id)))
+                l.Id > 0 && l.IsAuthor(userName) && !keep.Any(k => k.Id == l.Id)))
                 await filters.DeleteAsync(gone.Id, ct).ConfigureAwait(false);
 
-            foreach (var f in keep)
+            foreach (var f in keep.Where(f => f.IsAuthor(userName)))
             {
                 var before = _loaded.FirstOrDefault(l => l.Id == f.Id && f.Id > 0);
                 if (before is not null && !Differs(before, f)) continue;
@@ -150,15 +197,17 @@ public sealed class CentralFilterService(
     private IReadOnlyList<HostFilter> Snapshot() => [.. _loaded.Select(Clone)];
 
     /// <summary>
-    /// Der Team-Name ist Anzeige, kein Datenbestand — er kommt bei jedem Klonen
-    /// frisch aus dem Team-Store. Sonst zeigt ein umbenanntes Team im
+    /// Der Fachbereichs-Name ist Anzeige, kein Datenbestand — er kommt bei jedem
+    /// Klonen frisch aus dem Store. Sonst zeigt ein umbenannter Fachbereich im
     /// Filter-Manager weiter den alten Namen.
     /// </summary>
     private HostFilter Clone(HostFilter f) => new()
     {
         Id = f.Id,
-        TeamId = f.TeamId,
-        TeamName = teams.Current.NameOf(f.TeamId),
+        FachbereichId = f.FachbereichId,
+        FachbereichName = fachbereiche.Current.NameOf(f.FachbereichId),
+        Owner = f.Owner,
+        Subscribers = f.Subscribers,
         Name = f.Name,
         HostNameRegex = f.HostNameRegex,
         ExplicitHosts = [.. f.ExplicitHosts]
@@ -167,20 +216,24 @@ public sealed class CentralFilterService(
     private HostFilter ToModel(SharedFilter s) => new()
     {
         Id = s.HostFilterId,
-        TeamId = s.TeamId,
-        TeamName = teams.Current.NameOf(s.TeamId),
+        FachbereichId = s.FachbereichId,
+        FachbereichName = fachbereiche.Current.NameOf(s.FachbereichId),
+        Owner = s.OwnerUserName,
+        Subscribers = s.Subscribers,
         Name = s.Name,
         HostNameRegex = s.HostNameRegex,
         ExplicitHosts = [.. s.Hosts]
     };
 
     private SharedFilter ToShared(HostFilter f, string site) => new(
-        f.Id, f.TeamId, f.TeamId is null ? userName : null, site,
+        f.Id, f.FachbereichId,
+        string.IsNullOrEmpty(f.Owner) ? userName : f.Owner,
+        site,
         string.IsNullOrWhiteSpace(f.Name) ? "unbenannt" : f.Name,
-        f.HostNameRegex, f.ExplicitHosts);
+        f.HostNameRegex, f.ExplicitHosts, f.Subscribers);
 
     private static bool Differs(HostFilter a, HostFilter b)
-        => a.TeamId != b.TeamId
+        => a.FachbereichId != b.FachbereichId
         || !string.Equals(a.Name, b.Name, StringComparison.Ordinal)
         || !string.Equals(a.HostNameRegex, b.HostNameRegex, StringComparison.Ordinal)
         || !a.ExplicitHosts.OrderBy(h => h, StringComparer.OrdinalIgnoreCase)

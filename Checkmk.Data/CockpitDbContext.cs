@@ -17,8 +17,8 @@ public sealed class CockpitDbContext(DbContextOptions<CockpitDbContext> options)
     : DbContext(options)
 {
     /// <summary>Schema-Stand, den dieser Programmstand erwartet. Muss zu den
-    /// Skripten in <c>db/</c> passen (aktuell 006-area-hosttag.sql).</summary>
-    public const int ExpectedSchemaVersion = 6;
+    /// Skripten in <c>db/</c> passen (aktuell 007-fachbereich-katalog.sql).</summary>
+    public const int ExpectedSchemaVersion = 7;
 
     public DbSet<SchemaVersionRow> SchemaVersion => Set<SchemaVersionRow>();
     public DbSet<GlobalSetting> GlobalSettings => Set<GlobalSetting>();
@@ -26,11 +26,11 @@ public sealed class CockpitDbContext(DbContextOptions<CockpitDbContext> options)
     public DbSet<Area> Areas => Set<Area>();
     public DbSet<HostArea> HostAreas => Set<HostArea>();
     public DbSet<AreaSite> AreaSites => Set<AreaSite>();
-    public DbSet<Team> Teams => Set<Team>();
-    public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
+    public DbSet<Fachbereich> Fachbereiche => Set<Fachbereich>();
     public DbSet<AppAdmin> AppAdmins => Set<AppAdmin>();
     public DbSet<HostFilterRow> HostFilters => Set<HostFilterRow>();
     public DbSet<HostFilterHostRow> HostFilterHosts => Set<HostFilterHostRow>();
+    public DbSet<HostFilterSubscription> HostFilterSubscriptions => Set<HostFilterSubscription>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -96,28 +96,12 @@ public sealed class CockpitDbContext(DbContextOptions<CockpitDbContext> options)
             e.Property(x => x.AssignedBy).HasMaxLength(128);
         });
 
-        b.Entity<Team>(e =>
+        b.Entity<Fachbereich>(e =>
         {
-            e.ToTable("Team");
-            e.HasKey(x => x.TeamId);
+            e.ToTable("Fachbereich");
+            e.HasKey(x => x.FachbereichId);
             e.Property(x => x.Name).HasMaxLength(128);
             e.Property(x => x.Description).HasMaxLength(400);
-        });
-
-        b.Entity<TeamMember>(e =>
-        {
-            e.ToTable("TeamMember");
-            e.HasKey(x => new { x.TeamId, x.UserName });
-            e.Property(x => x.UserName).HasMaxLength(128);
-            // Beziehung deklarieren, obwohl es keine Navigations-Property gibt:
-            // Ohne sie kennt EF die Abhaengigkeit nicht und darf den Elternsatz
-            // zuerst loeschen. Die Datenbank raeumt dann per ON DELETE CASCADE
-            // die Kinder weg, und EFs eigenes DELETE trifft nichts mehr —
-            // Ergebnis ist eine DbUpdateConcurrencyException („expected 1 row,
-            // affected 0"), die wie ein Nebenlaeufigkeitsproblem aussieht und
-            // keines ist.
-            e.HasOne<Team>().WithMany().HasForeignKey(x => x.TeamId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<AppAdmin>(e =>
@@ -137,10 +121,11 @@ public sealed class CockpitDbContext(DbContextOptions<CockpitDbContext> options)
             e.Property(x => x.Name).HasMaxLength(128);
             e.Property(x => x.HostNameRegex).HasMaxLength(400);
             e.Property(x => x.ChangedBy).HasMaxLength(128);
-            // Bewusst KEIN Cascade — so steht es auch in der Datenbank. Ein Team
-            // zu loeschen soll nicht unbemerkt die geteilten Filter mitnehmen;
-            // TeamStore raeumt sie ausdruecklich und nennt vorher die Zahl.
-            e.HasOne<Team>().WithMany().HasForeignKey(x => x.TeamId)
+            // Bewusst KEIN Cascade — so steht es auch in der Datenbank. Einen
+            // Fachbereich zu loeschen soll nicht unbemerkt die Filter darin
+            // mitnehmen; FachbereichStore nimmt sie zuerst aus dem Katalog und
+            // nennt vorher die Zahl.
+            e.HasOne<Fachbereich>().WithMany().HasForeignKey(x => x.FachbereichId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -149,6 +134,19 @@ public sealed class CockpitDbContext(DbContextOptions<CockpitDbContext> options)
             e.ToTable("HostFilterHost");
             e.HasKey(x => new { x.HostFilterId, x.HostName });
             e.Property(x => x.HostName).HasMaxLength(255);
+            e.HasOne<HostFilterRow>().WithMany().HasForeignKey(x => x.HostFilterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<HostFilterSubscription>(e =>
+        {
+            e.ToTable("HostFilterSubscription");
+            e.HasKey(x => new { x.HostFilterId, x.UserName });
+            e.Property(x => x.UserName).HasMaxLength(128);
+            // Cascade wie in der Datenbank: Ein geloeschter oder aus dem Katalog
+            // genommener Filter hat keine Abonnenten mehr. Deshalb raeumt der
+            // Store sie auch NICHT zusaetzlich weg — das gaebe DELETEs, die
+            // nach dem Cascade nichts mehr treffen.
             e.HasOne<HostFilterRow>().WithMany().HasForeignKey(x => x.HostFilterId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
