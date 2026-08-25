@@ -4,7 +4,7 @@
         xmlns:vm="using:Checkmk.App.ViewModels"
         x:Class="Checkmk.App.Views.FilterManagerWindow"
         x:DataType="vm:FilterManagerViewModel"
-        Width="720" Height="480"
+        Width="780" Height="560"
         Title="Host-Filter verwalten"
         WindowStartupLocation="CenterOwner">
 
@@ -35,7 +35,12 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6">
+          <!-- WrapPanel statt StackPanel: Vier Knöpfe passen nicht nebeneinander
+               in die Listenspalte, und „Fachbereiche…" lief vorher aus der
+               Spalte heraus über den Editor. Umbrechen statt abschneiden —
+               und es hält, wenn eine Beschriftung länger wird. -->
+          <WrapPanel Grid.Row="1" Orientation="Horizontal"
+                     ItemSpacing="6" LineSpacing="6">
             <Button Content="Neu" Command="{Binding NewCommand}"
                     IsEnabled="{Binding CanEdit}" />
             <Button Content="Löschen" Command="{Binding DeleteCommand}"
@@ -46,7 +51,7 @@
             <Button Content="Fachbereiche…" Click="OnManageFachbereicheClick"
                     IsVisible="{Binding IsAdmin}"
                     ToolTip.Tip="Fachbereiche anlegen, umbenennen, löschen." />
-          </StackPanel>
+          </WrapPanel>
 
           <TextBlock Grid.Row="2" Text="{Binding SelectionHint}" FontSize="11"
                      Foreground="#AAAAAA" TextWrapping="Wrap"
