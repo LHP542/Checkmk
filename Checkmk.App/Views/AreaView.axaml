@@ -56,7 +56,8 @@
     <Grid Grid.Row="1" Name="SplitGrid" ColumnDefinitions="320,4,*">
 
     <TreeView Grid.Column="0" ItemsSource="{Binding Roots}"
-              SelectedItem="{Binding SelectedTreeItem}">
+              SelectedItem="{Binding SelectedTreeItem}"
+              DoubleTapped="OnTreeDoubleTapped">
       <TreeView.ContextMenu>
         <ContextMenu>
           <MenuItem Header="Hosts zuweisen…" Click="OnAssignHostsClick"

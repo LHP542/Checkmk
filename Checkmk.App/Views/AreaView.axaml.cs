@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -278,6 +279,28 @@ public partial class AreaView : UserControl
     }
 
     private bool _selectionFromMap;
+
+    /// <summary>
+    /// Doppelklick auf ein Gerät im Bereichsbaum öffnet die Host-Details —
+    /// dasselbe Fenster wie im Status-Tab.
+    ///
+    /// <b>Nur auf Host-Knoten.</b> Ein Doppelklick auf einen Bereich klappt ihn
+    /// auf und zu; das ist die erwartete Bedienung eines Baums und darf nicht
+    /// nebenbei ein Fenster öffnen.
+    /// </summary>
+    private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (Vm?.SelectedTreeItem is not AreaHostViewModel host) return;
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+        if (App.Services?.GetService<ICheckmkClientProvider>() is not { } clients) return;
+
+        // CanWrite weiterreichen: im Viewer-Modus zeigt das Detailfenster sonst
+        // Ack/Downtime/Kommentar, obwohl der Rest der Oberflaeche sie ausblendet.
+        var detailVm = new HostDetailViewModel(clients, host.HostName, Vm.CanWrite);
+        new HostDetailWindow(detailVm).Show(owner);
+
+        e.Handled = true;
+    }
 
     /// <summary>
     /// Rechtsklick auf der Karte öffnet dasselbe Menü wie im Baum. Der Weg

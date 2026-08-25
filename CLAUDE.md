@@ -172,6 +172,9 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      `SelectedNode`.** Ein Klick auf einen Host bekäme sonst den falschen Typ.
      Die Bereichsauswahl bleibt bei einem Host-Klick stehen — wer einen Host
      unter „Container" anklickt, meint weiterhin den Container.
+  **Doppelklick auf ein Gerät öffnet die Host-Details** — dasselbe Fenster wie
+  im Status-Tab. Bewusst nur auf Host-Knoten: Ein Doppelklick auf einen Bereich
+  klappt ihn auf und zu, und das ist die erwartete Bedienung eines Baums.
 - **Bereiche je Site sichtbar** (Schema 4, Tabelle `AreaSite`). LHP und
   `Schul_IT` sind heute getrennt, sollen aber irgendwann zusammengeführt werden.
   Deshalb **keine Spalte `Site` auf `Area`**: Ein Standort ist ein Ort, kein
