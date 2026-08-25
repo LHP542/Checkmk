@@ -474,6 +474,23 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   **Familie** (Windows/Linux), die exakte Version bräuchte die HW/SW-Inventur
   (`os_version`). Kontextmenü im Baum ist knotenabhängig (Host vs. Service): Host-Details,
   Ack, Downtime, Kommentar, Client aktualisieren.
+- **Autostart** (`AutoStart`, Checkbox in den Einstellungen): Eintrag unter
+  `HKCU\…\CurrentVersion\Run` mit dem Schalter `--tray`, die App kommt also
+  ins Benachrichtigungsfeld statt mit Fenster hoch. Vier Punkte:
+  1. **HKCU, nicht HKLM.** Das ist die Entscheidung dessen, der vor dem Rechner
+     sitzt, und braucht keine erhöhten Rechte — ein Häkchen, das eine
+     UAC-Abfrage auslöst, setzt niemand.
+  2. **`Environment.ProcessPath`, nie `Assembly.Location`.** Letzteres ist im
+     Single-File-Build leer, der Eintrag zeigte dann ins Nichts.
+  3. **`--tray` muss in `Program.KnownSwitches` stehen.** Seit v1.15.1 fängt
+     `TryShowUsage` unbekannte `--`-Schalter ab; fehlte er dort, endete jeder
+     Autostart in einer Kurzhilfe, die niemand sieht. Ein Test hält das fest.
+  4. **Das Häkchen wirkt sofort, nicht erst beim Speichern**, und sein Zustand
+     kommt beim Öffnen direkt aus der Registry — der Eintrag kann auch von
+     außen verschwunden sein (neues Profil, Aufräumskript).
+  Registry statt Verknüpfung im Autostart-Ordner: Eine `.lnk` zu erzeugen geht
+  in .NET nur über COM (`IShellLink`), der Run-Schlüssel sind zwei Zeilen und
+  ist mit Bordmitteln prüfbar.
 - **Tray & Notifications:** Minimieren legt die App ins **System-Tray** (nicht Taskleiste)
   und schaltet Auto-Refresh ein (`TrayController`). Tray-Icon zeigt per Ampelfarbe den
   schlechtesten Status im aktiven Filter, Tooltip mit Kurzfassung. `StatusChangeMonitor`

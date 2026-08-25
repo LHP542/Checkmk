@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Checkmk.App.Services;
@@ -62,6 +63,16 @@ public partial class App : Application
             var toast = Services.GetRequiredService<IToastNotifier>();
             var viewer = Services.GetRequiredService<ViewerMode>();
             _trayController = new TrayController(this, window, status, toast, viewer);
+
+            // Mit --tray (Autostart) kommt die App direkt ins Tray, ohne Fenster.
+            // Ein Werkzeug, das sich beim Anmelden ungefragt vor alles legt, macht
+            // sich keine Freunde — im Tray sieht man die Ampel trotzdem.
+            if (desktop.Args?.Any(a =>
+                    string.Equals(a, AutoStart.TraySwitch, StringComparison.OrdinalIgnoreCase))
+                == true)
+            {
+                window.WindowState = WindowState.Minimized;
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

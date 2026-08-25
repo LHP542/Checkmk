@@ -56,6 +56,42 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     public string StorageLocationLabel { get; }
 
+    /// <summary>
+    /// Startet das Cockpit beim Anmelden mit.
+    ///
+    /// <b>Wirkt sofort, nicht erst beim Speichern.</b> Der Autostart ist keine
+    /// Verbindungseinstellung, die zusammen mit Host und Secret in
+    /// <c>settings.json</c> gehört, sondern ein Eintrag in der Registry des
+    /// angemeldeten Benutzers. Ihn an „Speichern" zu hängen hieße, dass ein
+    /// „Abbrechen" ihn stillschweigend zurücknimmt — oder eben nicht, je
+    /// nachdem, wie man es baut. Ein Häkchen, das sofort tut, was draufsteht,
+    /// ist ehrlicher.
+    /// </summary>
+    public bool StartWithWindows
+    {
+        get => _startWithWindows;
+        set
+        {
+            if (!SetProperty(ref _startWithWindows, value)) return;
+            if (!OperatingSystem.IsWindows()) return;
+
+            if (AutoStart.Set(value) is { } error)
+            {
+                StatusMessage = error;
+                // Zurueckdrehen, damit das Haekchen nicht etwas behauptet, das
+                // nicht passiert ist.
+                SetProperty(ref _startWithWindows, AutoStart.IsEnabled,
+                    nameof(StartWithWindows));
+                return;
+            }
+
+            StatusMessage = value
+                ? "Autostart eingeschaltet — das Cockpit startet künftig ins Tray."
+                : "Autostart ausgeschaltet.";
+        }
+    }
+    private bool _startWithWindows;
+
     /// <summary>Wird true, sobald erfolgreich gespeichert wurde (Fenster kann schliessen).</summary>
     public bool Saved { get; private set; }
 
@@ -76,6 +112,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
         IgnoreCertificateErrors = s.IgnoreCertificateErrors;
         Secret = _store.LoadSecret(s) ?? "";
         KnownSitesCsv = string.Join(", ", s.KnownSites);
+
+        // Direkt aus der Registry, nicht aus settings.json: Der Eintrag kann
+        // auch von aussen verschwunden sein (Profil neu, Aufraeum-Skript), und
+        // dann soll das Haekchen das zeigen statt zu behaupten, es sei an.
+        _startWithWindows = OperatingSystem.IsWindows() && AutoStart.IsEnabled;
 
         var isShared = _store.SettingsFilePath.StartsWith(@"\\", StringComparison.Ordinal);
         StorageLocationLabel = isShared

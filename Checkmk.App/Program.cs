@@ -186,9 +186,14 @@ internal static class Program
         return true;
     }
 
-    /// <summary>Werkzeug-Schalter, die diese Exe kennt.</summary>
-    private static readonly string[] KnownSwitches =
-        ["--protect-db", "--make-update-key", "--sign-update", "--help"];
+    /// <summary>
+    /// Schalter, die diese Exe kennt. <c>--tray</c> ist kein Werkzeug-Modus,
+    /// sondern eine Startoption — muss aber hier stehen, sonst faengt ihn
+    /// <see cref="TryShowUsage"/> ab und der Autostart endet in einer
+    /// Kurzhilfe, die niemand sieht.
+    /// </summary>
+    internal static readonly string[] KnownSwitches =
+        ["--protect-db", "--make-update-key", "--sign-update", "--help", AutoStart.TraySwitch];
 
     /// <summary>
     /// Fängt unbekannte <c>--</c>-Schalter ab und zeigt die Kurzhilfe.

@@ -57,6 +57,15 @@
                     IsChecked="{Binding IgnoreCertificateErrors}" />
         </StackPanel>
 
+        <Border Height="1" Background="#333333" Margin="0,6" />
+
+        <StackPanel Spacing="3">
+          <CheckBox Content="Beim Anmelden automatisch starten"
+                    IsChecked="{Binding StartWithWindows}" />
+          <TextBlock Text="Das Cockpit startet dann ins Benachrichtigungsfeld, ohne Fenster — die Ampel ist am Tray-Symbol sichtbar. Gilt nur für dich, nicht für andere Benutzer dieses Rechners."
+                     Foreground="#707070" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+
         <TextBlock Text="{Binding StatusMessage}" Foreground="#AAAAAA" TextWrapping="Wrap" />
         <TextBlock Text="{Binding StorageLocationLabel}" Foreground="#707070"
                    FontSize="11" TextWrapping="Wrap" />
