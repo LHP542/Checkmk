@@ -143,14 +143,16 @@ public sealed class CentralFilterService(
     public IReadOnlyList<HostFilter> Current => Snapshot();
 
     /// <summary>
-    /// Schreibt die Unterschiede zwischen <paramref name="current"/> und dem
-    /// zuletzt geladenen Stand.
+    /// Schreibt geänderte Filter und löscht <paramref name="deleted"/>.
     ///
-    /// <b>Immer einzeln, nie der ganze Satz.</b> Ein Read-Modify-Write über alle
-    /// Filter würde bei zwei gleichzeitigen Bearbeitern lautlos Einträge
-    /// verlieren — genau der Fehler, an dem die geteilte <c>hosts.json</c>
-    /// gestorben ist. Gelöscht wird ausschließlich, was in <i>meinem</i>
-    /// Ausgangsstand stand.
+    /// <para><b>Gelöscht wird nur, was ausdrücklich genannt ist</b> — nie das,
+    /// was gerade nicht in <paramref name="current"/> steht. Diese
+    /// Schlussfolgerung war ein datenvernichtender Fehler: Die Collection ist
+    /// bei jedem Neuaufbau der Liste kurzzeitig unvollständig, und ein in
+    /// diesem Moment ausgelöstes Speichern löschte einen völlig unbeteiligten
+    /// Filter aus der Datenbank. Real passiert am 2026-08-25: „XMS"
+    /// verschwand in derselben Millisekunde, in der er veröffentlicht
+    /// wurde.</para>
     ///
     /// <para><b>Fremde Filter werden nie geschrieben.</b> Ein abonnierter Filter
     /// gehört seinem Autor; er steht zwar in meiner Liste, aber eine Änderung
@@ -158,7 +160,7 @@ public sealed class CentralFilterService(
     /// ich nicht der Autor bin — der Dialog sperrt die Felder ohnehin schon.</para>
     /// </summary>
     public async Task<string?> PersistAsync(IReadOnlyList<HostFilter> current,
-        CancellationToken ct = default)
+        IReadOnlyList<int>? deleted = null, CancellationToken ct = default)
     {
         if (!CanWrite)
             return "Die Datenbank ist nicht erreichbar — Filter sind gerade nur lesbar.";
@@ -167,11 +169,15 @@ public sealed class CentralFilterService(
         {
             var keep = current.Where(f => !f.IsTransient).ToList();
 
-            // Nur eigene Filter loeschen. Ein abonnierter, den ich aus meiner
-            // Liste nehme, wird abbestellt — nicht geloescht.
-            foreach (var gone in _loaded.Where(l =>
-                l.Id > 0 && l.IsAuthor(userName) && !keep.Any(k => k.Id == l.Id)))
-                await filters.DeleteAsync(gone.Id, ct).ConfigureAwait(false);
+            // Nur eigene Filter loeschen, und nur die ausdruecklich genannten.
+            // Ein abonnierter, den ich aus meiner Liste nehme, wird abbestellt —
+            // nicht geloescht.
+            foreach (var id in deleted ?? [])
+            {
+                var mine = _loaded.FirstOrDefault(l => l.Id == id);
+                if (mine is null || !mine.IsAuthor(userName)) continue;
+                await filters.DeleteAsync(id, ct).ConfigureAwait(false);
+            }
 
             foreach (var f in keep.Where(f => f.IsAuthor(userName)))
             {
@@ -183,7 +189,21 @@ public sealed class CentralFilterService(
                 f.Id = id;
             }
 
-            _loaded = [.. keep.Select(Clone)];
+            // Den Ausgangsstand fortschreiben statt ersetzen. Ihn durch `keep`
+            // zu ersetzen hatte denselben Fehler wie das Löschen per Diff: Ist
+            // die Liste gerade unvollständig, gälte ein bestehender Filter
+            // danach als unbekannt — und würde beim nächsten Speichern als
+            // neuer Datensatz ein zweites Mal angelegt.
+            foreach (var id in deleted ?? [])
+                _loaded.RemoveAll(l => l.Id == id);
+
+            foreach (var f in keep)
+            {
+                var i = _loaded.FindIndex(l => l.Id == f.Id && f.Id > 0);
+                if (i >= 0) _loaded[i] = Clone(f);
+                else _loaded.Add(Clone(f));
+            }
+
             WriteCache(_site, _loaded);
             return null;
         }

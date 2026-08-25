@@ -41,6 +41,34 @@ public sealed partial class AreaViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanEditSelection))]
     private AreaNodeViewModel? _selectedNode;
 
+    /// <summary>
+    /// Was im Baum markiert ist — ein Bereich <b>oder</b> ein Host.
+    ///
+    /// Der TreeView bindet hierauf statt auf <see cref="SelectedNode"/>, weil
+    /// unter einem Bereich jetzt auch Host-Knoten hängen. Ohne diese
+    /// Zwischenstufe bekäme die typisierte Bereichs-Auswahl bei jedem Klick auf
+    /// einen Host ein Objekt des falschen Typs.
+    ///
+    /// <b>Ein Klick auf einen Host lässt die Bereichsauswahl stehen.</b> Das ist
+    /// auch die richtige Bedienung: Wer einen Host unter „Container" anklickt,
+    /// meint weiterhin den Container — Kontextmenü und Karte sollen sich
+    /// darauf beziehen.
+    /// </summary>
+    [ObservableProperty]
+    private object? _selectedTreeItem;
+
+    partial void OnSelectedTreeItemChanged(object? value)
+    {
+        if (value is AreaNodeViewModel node) SelectedNode = node;
+    }
+
+    partial void OnSelectedNodeChanged(AreaNodeViewModel? value)
+    {
+        // Programmatisch gesetzte Auswahl (Karte, Neuanlage) im Baum nachziehen.
+        if (value is not null && !ReferenceEquals(SelectedTreeItem, value))
+            SelectedTreeItem = value;
+    }
+
     public bool HasSelection => SelectedNode is not null;
 
     /// <summary>Der Sammelknoten „Ohne Bereich" ist kein Datensatz — umbenennen
@@ -119,11 +147,45 @@ public sealed partial class AreaViewModel : ViewModelBase
         var worstPerHost = AreaRollup.WorstStatePerHost(services);
         var aggregates = AreaRollup.Compute(VisibleAreas(snapshot), snapshot.HostToArea, worstPerHost);
 
+        // Erst die Host-Listen, dann die Aggregate: Apply() vergleicht die Zahl
+        // der zugeordneten Hosts mit der gefilterten, um „(3 zugeordnet)" zu
+        // setzen — dafuer muss die Liste schon stehen.
+        FillAssignedHosts(snapshot, worstPerHost);
+
         foreach (var (areaId, node) in _byId)
             node.Apply(aggregates.GetValueOrDefault(areaId, AreaAggregate.Empty));
 
         ApplyUnassigned(snapshot, worstPerHost);
         MapChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Füllt je Bereich die Liste seiner zugeordneten Hosts — die Menge, die
+    /// beim Aufklappen erscheint.
+    ///
+    /// <b>Bewusst ungefiltert.</b> Der Ampelpunkt und die Zahl am Bereich
+    /// zeigen die Linse des aktiven Filters; diese Liste zeigt den
+    /// tatsächlichen Bestand. Genau die Differenz war die Verwirrung: „Der
+    /// Container hat drei Geräte, warum steht da 1?" Hosts außerhalb des
+    /// Filters stehen mit dem Vermerk „nicht im Filter" dabei, statt zu fehlen.
+    /// </summary>
+    private void FillAssignedHosts(AreaSnapshot snapshot,
+        IReadOnlyDictionary<string, ServiceState> worstPerHost)
+    {
+        var perArea = new Dictionary<int, List<AreaHostViewModel>>();
+
+        foreach (var (host, areaId) in snapshot.HostToArea
+                     .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_byId.ContainsKey(areaId)) continue;
+
+            var inFilter = worstPerHost.TryGetValue(host, out var state);
+            (perArea.TryGetValue(areaId, out var list) ? list : perArea[areaId] = [])
+                .Add(new AreaHostViewModel(host, inFilter ? state : ServiceState.Unknown, inFilter));
+        }
+
+        foreach (var (areaId, node) in _byId)
+            node.SetHosts(perArea.GetValueOrDefault(areaId, []));
     }
 
     /// <summary>
@@ -199,6 +261,10 @@ public sealed partial class AreaViewModel : ViewModelBase
         }
 
         Roots.Add(_unassigned);
+
+        // Unterbereiche stehen jetzt; die Host-Knoten haengt FillAssignedHosts
+        // gleich darunter.
+        foreach (var node in _byId.Values) node.RebuildTreeChildren();
 
         // Auswahl über die Id nachziehen, sonst springt sie beim Anlegen weg.
         if (selectedId is { } id)

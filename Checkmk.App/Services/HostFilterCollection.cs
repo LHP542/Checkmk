@@ -210,8 +210,23 @@ public sealed class HostFilterCollection : ObservableObject
         Persist();
     }
 
+    /// <summary>
+    /// Ids, die ausdrücklich gelöscht werden sollen.
+    ///
+    /// <b>Warum eine eigene Liste:</b> Vorher erschloss der Diff die Löschungen
+    /// daraus, dass ein Filter nicht mehr in der Collection stand. Das ist
+    /// gefährlich, weil die Collection bei jedem Neuaufbau kurzzeitig
+    /// unvollständig ist — und ein währenddessen ausgelöstes Persist hat dann
+    /// einen völlig unbeteiligten Filter aus der Datenbank gelöscht. Real
+    /// passiert: „XMS" verschwand im selben Moment, in dem er veröffentlicht
+    /// wurde. Gelöscht wird jetzt nur noch, was hier drinsteht.
+    /// </summary>
+    private readonly List<int> _deleted = [];
+
     public void Remove(HostFilter f)
     {
+        if (f.Id > 0) _deleted.Add(f.Id);
+
         Filters.Remove(f);
         if (ReferenceEquals(_active, f))
             Active = null;
@@ -280,14 +295,29 @@ public sealed class HostFilterCollection : ObservableObject
             ActiveFilterName = state.ActiveFilterName
         });
 
-        _ = PersistCentralAsync(state.Filters);
+        var deleted = _deleted.ToList();
+        _deleted.Clear();
+        QueuePersist(state.Filters, deleted);
     }
 
-    private async Task PersistCentralAsync(List<HostFilter> current)
+    /// <summary>
+    /// Läuft nacheinander, nie parallel. <see cref="Persist"/> wird bei jeder
+    /// Kleinigkeit ausgelöst und startete den Schreibvorgang bisher als
+    /// Feuer-und-vergessen — zwei Aufrufe in derselben Millisekunde
+    /// überholten sich dann gegenseitig, jeder mit einem anderen Stand der
+    /// Collection. Genau so ist ein Filter verlorengegangen.
+    /// </summary>
+    private Task _persistChain = Task.CompletedTask;
+
+    private void QueuePersist(List<HostFilter> current, IReadOnlyList<int> deleted)
     {
         if (_central is null) return;
-        LastError = await _central.PersistAsync(current).ConfigureAwait(true);
-        OnPropertyChanged(nameof(CanEdit));
-        OnPropertyChanged(nameof(StatusHint));
+
+        _persistChain = _persistChain.ContinueWith(async _ =>
+        {
+            LastError = await _central.PersistAsync(current, deleted).ConfigureAwait(true);
+            OnPropertyChanged(nameof(CanEdit));
+            OnPropertyChanged(nameof(StatusHint));
+        }, TaskScheduler.FromCurrentSynchronizationContext()).Unwrap();
     }
 }

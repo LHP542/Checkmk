@@ -56,7 +56,7 @@
     <Grid Grid.Row="1" Name="SplitGrid" ColumnDefinitions="320,4,*">
 
     <TreeView Grid.Column="0" ItemsSource="{Binding Roots}"
-              SelectedItem="{Binding SelectedNode}">
+              SelectedItem="{Binding SelectedTreeItem}">
       <TreeView.ContextMenu>
         <ContextMenu>
           <MenuItem Header="Hosts zuweisen…" Click="OnAssignHostsClick"
@@ -80,7 +80,9 @@
         </ContextMenu>
       </TreeView.ContextMenu>
       <TreeView.DataTemplates>
-        <TreeDataTemplate DataType="vm:AreaNodeViewModel" ItemsSource="{Binding Children}">
+        <!-- Unterbereiche UND zugeordnete Hosts haengen unter demselben Knoten;
+             der TreeView kann nur eine Kindliste binden. -->
+        <TreeDataTemplate DataType="vm:AreaNodeViewModel" ItemsSource="{Binding TreeChildren}">
           <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <!-- Grauer Punkt bei leeren Bereichen: „keine Hosts" ist nicht
                  dasselbe wie „alles in Ordnung". -->
@@ -92,8 +94,31 @@
                     ToolTip.Tip="Diesem Bereich sind (im aktiven Filter) keine Hosts zugeordnet." />
             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
             <TextBlock Text="{Binding Badge}" Foreground="#AAAAAA" VerticalAlignment="Center" />
+            <!-- „(3 zugeordnet)" nur, wenn der Filter weniger durchlaesst als
+                 zugeordnet ist — sonst waere es Rauschen. -->
+            <TextBlock Text="{Binding AssignedNote}" Foreground="#8FA8C0" FontSize="11"
+                       VerticalAlignment="Center"
+                       ToolTip.Tip="So viele Geräte sind diesem Bereich zugeordnet. Aufklappen zeigt sie — auch die, die der aktive Filter ausblendet." />
           </StackPanel>
         </TreeDataTemplate>
+
+        <!-- Ein zugeordneter Host. Blass, wenn der aktive Filter ihn ausblendet:
+             er gehoert hierher, zaehlt aber nicht in die Ampel des Bereichs. -->
+        <DataTemplate DataType="vm:AreaHostViewModel">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Border Width="9" Height="9" CornerRadius="5" VerticalAlignment="Center"
+                    Background="{Binding State, Converter={StaticResource StateToBrush}}"
+                    IsVisible="{Binding InFilter}" />
+            <Border Width="9" Height="9" CornerRadius="5" VerticalAlignment="Center"
+                    Background="#444444" IsVisible="{Binding !InFilter}" />
+            <TextBlock Text="{Binding HostName}" VerticalAlignment="Center"
+                       Foreground="#DDDDDD" IsVisible="{Binding InFilter}" />
+            <TextBlock Text="{Binding HostName}" VerticalAlignment="Center"
+                       Foreground="#777777" IsVisible="{Binding !InFilter}" />
+            <TextBlock Text="{Binding Note}" Foreground="#777777" FontSize="11"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </DataTemplate>
       </TreeView.DataTemplates>
     </TreeView>
 

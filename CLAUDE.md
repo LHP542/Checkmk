@@ -154,6 +154,24 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   Der Sammelknoten **„Ohne Bereich"** ist kein Datensatz (`AreaId = -1`), sondern
   die Restmenge — die Arbeitsliste beim Zuordnen und der einzige Weg, einen
   vergessenen Host überhaupt zu bemerken.
+- **Ein Bereich lässt sich aufklappen und zeigt seine Hosts.** Die Liste ist
+  bewusst **ungefiltert**: Ampelpunkt und Zahl am Bereich zeigen die Linse des
+  aktiven Filters, die Kindliste den tatsächlichen Bestand. Genau die Differenz
+  war eine echte Verwirrung („der Container hat drei Geräte, warum steht da
+  1?"). Hosts außerhalb des Filters stehen ausgegraut mit dem Vermerk „nicht im
+  Filter" dabei, statt zu fehlen; weicht die Zahl ab, steht am Bereich zusätzlich
+  „(3 zugeordnet)". Drei Punkte:
+  1. **Die Kindliste wird nur bei echter Änderung neu gebaut**
+     (`AreaNodeViewModel.SetHosts` vergleicht eine Signatur). Der Rollup läuft
+     alle paar Sekunden; ein Neuaufbau bei jedem Durchlauf klappte jeden
+     geöffneten Ast wieder zu — derselbe Grund wie bei `RebuildIfChanged`.
+  2. **`TreeChildren` führt Unterbereiche und Hosts zusammen**, weil ein
+     `TreeView` nur *eine* Kindliste binden kann. `Children` bleibt die
+     Bereichshierarchie, `Flatten()` läuft weiter nur über Bereiche.
+  3. **Der Baum bindet auf `SelectedTreeItem` (object), nicht auf
+     `SelectedNode`.** Ein Klick auf einen Host bekäme sonst den falschen Typ.
+     Die Bereichsauswahl bleibt bei einem Host-Klick stehen — wer einen Host
+     unter „Container" anklickt, meint weiterhin den Container.
 - **Bereiche je Site sichtbar** (Schema 4, Tabelle `AreaSite`). LHP und
   `Schul_IT` sind heute getrennt, sollen aber irgendwann zusammengeführt werden.
   Deshalb **keine Spalte `Site` auf `Area`**: Ein Standort ist ein Ort, kein
@@ -618,10 +636,18 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      Filter aus dem Katalog, verschwindet er bei den Abonnenten — sonst sähen
      Fremde weiter etwas, das nicht mehr geteilt ist. Die Abo-Zeile darf dabei
      stehenbleiben, sie greift einfach nicht.
-  3. **Geschrieben wird einzeln, nie der ganze Satz.** `PersistAsync` diffed
-     gegen den zuletzt geladenen Stand; gelöscht wird ausschließlich, was in
-     *diesem* Ausgangsstand stand **und mir gehört**. Ein abonnierter Filter,
-     den ich aus meiner Liste nehme, wird abbestellt, nicht gelöscht.
+  3. **Gelöscht wird nur, was ausdrücklich genannt ist** — nie das, was gerade
+     nicht in der Collection steht. Diese Schlussfolgerung war ein
+     datenvernichtender Fehler: Die Liste ist bei jedem Neuaufbau kurzzeitig
+     unvollständig, und ein in diesem Moment ausgelöstes Speichern löschte
+     einen völlig unbeteiligten Filter. Real am 2026-08-25: „XMS" verschwand in
+     derselben Millisekunde, in der er veröffentlicht wurde — im Log als zwei
+     `Filter-Save`-Zeilen mit 5 und dann 4 Filtern sichtbar. Deshalb führt
+     `HostFilterCollection` eine eigene `_deleted`-Liste, `PersistAsync` läuft
+     **serialisiert** statt Feuer-und-vergessen, und der Ausgangsstand wird
+     fortgeschrieben statt ersetzt. Fremde Filter werden weder gelöscht noch
+     geschrieben; ein abonnierter, den ich aus meiner Liste nehme, wird
+     abbestellt.
   4. **Bei Ausfall wird nicht geschrieben** (`FilterOrigin.Cache`, `CanWrite`).
      Eine Änderung, die nur im Cache landet, wäre beim nächsten erfolgreichen
      Laden lautlos weg. Cache-Datei: `filter-cache.json`.
