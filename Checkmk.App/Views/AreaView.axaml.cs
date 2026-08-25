@@ -253,14 +253,27 @@ public partial class AreaView : UserControl
     }
 
     /// <summary>Dieselbe Ampel wie im Baum — grau, wenn keine Hosts drin sind.</summary>
+    /// <summary>
+    /// Farben der Flächen und Marker auf der Karte.
+    ///
+    /// <b>Kräftiger als die Punkte im Baum, und mit Absicht.</b> Im Baum liegt
+    /// ein Ampelpunkt auf ruhigem Dunkelgrau; auf einem Luftbild konkurriert er
+    /// mit Ziegelrot, Rasengrün und Betongrau. Die abgetönten Material-Farben
+    /// (<c>#EF5350</c>, <c>#66BB6A</c>) gingen dort schlicht unter — gemessen an
+    /// der Campus-Ansicht war die grüne Fläche vom Rasen kaum zu unterscheiden.
+    ///
+    /// Deshalb hier voll gesättigte Signalfarben. Sie sehen für sich genommen
+    /// grell aus; das ist der Preis dafür, dass sie auf jedem Untergrund als
+    /// Ampel gelesen werden.
+    /// </summary>
     private static Color ColorFor(AreaNodeViewModel node) => node.IsEmptyOfHosts
-        ? Color.FromRgb(0x88, 0x88, 0x88)
+        ? Color.FromRgb(0xB0, 0xB0, 0xB0)
         : node.WorstState switch
         {
-            ServiceState.Critical => Color.FromRgb(0xEF, 0x53, 0x50),
-            ServiceState.Warning => Color.FromRgb(0xFF, 0xCA, 0x28),
-            ServiceState.Unknown => Color.FromRgb(0xAB, 0x47, 0xBC),
-            _ => Color.FromRgb(0x66, 0xBB, 0x6A)
+            ServiceState.Critical => Color.FromRgb(0xFF, 0x17, 0x17),
+            ServiceState.Warning => Color.FromRgb(0xFF, 0xB3, 0x00),
+            ServiceState.Unknown => Color.FromRgb(0xD5, 0x00, 0xF9),
+            _ => Color.FromRgb(0x00, 0xE6, 0x4D)
         };
 
     /// <summary>

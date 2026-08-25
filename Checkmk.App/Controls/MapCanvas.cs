@@ -692,11 +692,16 @@ public sealed class MapCanvas : Control
 
         var p = ToScreen(point);
         var highlighted = HighlightedAreaId == shape.AreaId;
-        var r = highlighted ? 9.0 : 7.0;
-        var tip = 7.0;
+
+        // Groesser als frueher (7/9 px): Ein Punkt dieser Groesse geht auf einem
+        // Luftbild zwischen Autos, Dachfenstern und Baumkronen unter.
+        var r = highlighted ? 11.0 : 9.0;
+        var tip = 9.0;
 
         var brush = new SolidColorBrush(shape.Outline);
-        var pen = new Pen(Brushes.Black, 1.5);
+        // Kraeftigerer schwarzer Rand als Kante gegen jeden Untergrund —
+        // derselbe Grund wie beim doppelten Umriss der Flaechen.
+        var pen = new Pen(Brushes.Black, highlighted ? 2.5 : 2.0);
 
         // Spitze als Dreieck unter dem Kreis.
         var flag = new StreamGeometry();
@@ -708,12 +713,19 @@ public sealed class MapCanvas : Control
             ctx.EndFigure(true);
         }
         context.DrawGeometry(brush, pen, flag);
-        context.DrawEllipse(brush, pen, new Point(p.X, p.Y - tip - r * 0.6), r, r);
+
+        var centre = new Point(p.X, p.Y - tip - r * 0.6);
+        context.DrawEllipse(brush, pen, centre, r, r);
+
+        // Heller Kern: Der Marker bleibt als Ampel lesbar, auch wenn die
+        // Sättigung auf buntem Untergrund verwaschen wirkt.
+        context.DrawEllipse(new SolidColorBrush(Colors.White, 0.85), null,
+            centre, r * 0.28, r * 0.28);
 
         var text = new FormattedText(shape.Name, System.Globalization.CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, Typeface.Default, 12, Brushes.White);
         var box = new Rect(p.X - text.Width / 2 - 4, p.Y + 3, text.Width + 8, text.Height + 4);
-        context.FillRectangle(new SolidColorBrush(Colors.Black, 0.6), box, 3);
+        context.FillRectangle(new SolidColorBrush(Colors.Black, 0.75), box, 3);
         context.DrawText(text, new Point(box.X + 4, box.Y + 2));
     }
 
@@ -725,9 +737,20 @@ public sealed class MapCanvas : Control
             var geometry = BuildGeometry(shape.Points, close: true);
             var highlighted = HighlightedAreaId == shape.AreaId;
 
-            var fill = new SolidColorBrush(shape.Outline, highlighted ? 0.45 : 0.25);
-            var pen = new Pen(new SolidColorBrush(shape.Outline), highlighted ? 3 : 2);
-            context.DrawGeometry(fill, pen, geometry);
+            // Deckkraft deutlich hoeher als frueher (0.25): Auf einem Luftbild
+            // schlaegt der bunte Untergrund durch eine zarte Fuellung durch, und
+            // die Flaeche war kaum als eingefaerbt zu erkennen.
+            var fill = new SolidColorBrush(shape.Outline, highlighted ? 0.62 : 0.42);
+            var width = highlighted ? 3.5 : 2.5;
+
+            // Zweifacher Umriss („casing"): erst eine dunkle, breitere Linie,
+            // darauf die farbige. Ein einzelner farbiger Strich verschwindet
+            // gegen hellen Beton genauso wie gegen dunkles Laub — die dunkle
+            // Unterlage gibt ihm auf jedem Untergrund eine Kante.
+            context.DrawGeometry(fill,
+                new Pen(new SolidColorBrush(Colors.Black, 0.65), width + 2.5), geometry);
+            context.DrawGeometry(null,
+                new Pen(new SolidColorBrush(shape.Outline), width), geometry);
 
             // Beschriftung in die Mitte des umschliessenden Rechtecks.
             if (MapGeometry.Bounds(shape.Points) is not { } b) return;
@@ -739,7 +762,7 @@ public sealed class MapCanvas : Control
             // Text ueber hellen Flaechen sonst unlesbar.
             var box = new Rect(mid.X - text.Width / 2 - 4, mid.Y - text.Height / 2 - 2,
                 text.Width + 8, text.Height + 4);
-            context.FillRectangle(new SolidColorBrush(Colors.Black, 0.55), box, 3);
+            context.FillRectangle(new SolidColorBrush(Colors.Black, 0.75), box, 3);
             context.DrawText(text, new Point(box.X + 4, box.Y + 2));
         }
     }

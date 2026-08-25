@@ -380,6 +380,17 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   ein `UPDATE` an einer Stelle statt an 93 Bereichen. Die Toolbar-Auswahl bleibt
   die persönliche Vorliebe und wird nur **übersteuert**, nicht überschrieben
   (`_userLayer`); ein Name, den es nicht mehr gibt, fällt auf die Vorgabe zurück.
+  **Flächen und Marker sind kräftiger gefärbt als die Punkte im Baum** — mit
+  Absicht. Im Baum liegt ein Ampelpunkt auf ruhigem Dunkelgrau; auf einem
+  Luftbild konkurriert er mit Ziegelrot, Rasengrün und Betongrau. Die abgetönten
+  Material-Farben gingen dort unter (die grüne Fläche war vom Rasen kaum zu
+  unterscheiden). Deshalb auf der Karte voll gesättigte Signalfarben
+  (`AreaView.ColorFor`), Füllung mit 42 % statt 25 % und ein **doppelter
+  Umriss**: erst eine dunkle, breitere Linie, darauf die farbige. Ein einzelner
+  farbiger Strich verschwindet gegen hellen Beton genauso wie gegen dunkles
+  Laub — die dunkle Unterlage gibt ihm auf jedem Untergrund eine Kante. Marker
+  haben zusätzlich einen hellen Kern. Nicht auf „einheitlich mit dem Baum"
+  zurückdrehen: Die beiden Untergründe sind nicht vergleichbar.
   **Sechs Hintergründe umschaltbar** (`GlobalSetting.MapLayers`, alle einzeln
   gegen die Dienste verifiziert, Zoom 18 über dem Rathaus):
 
