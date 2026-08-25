@@ -19,8 +19,8 @@
 
   <ItemGroup>
     <!-- Core / DI / Logging -->
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
 
     <!-- Auf 10.0.11 gehoben, weil EF Core 10.0.11 mindestens das fordert.
          Alle folgenden Eintraege sind transitiv und stehen nur hier, damit das
@@ -35,10 +35,10 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.6" />
-    <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.5" />
+    <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.11" />
     <PackageVersion Include="NLog" Version="6.2.0" />
     <PackageVersion Include="NLog.Extensions.Logging" Version="6.2.0" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.9" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     <!-- Transitiv von Avalonia.FreeDesktop (Linux/DBus). MUSS zur von Avalonia geforderten
          Version passen (12.1.0 -> 0.94.1), sonst MissingTypeException zur Laufzeit.
          GHSA-xrw6-gwf8-vvr9 betrifft nur < 0.20, dieser Pin ist damit nicht verwundbar. -->
@@ -47,7 +47,7 @@
     <PackageVersion Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
     <!-- Kommt transitiv aus Microsoft.Toolkit.Uwp.Notifications 7.1.3 als 4.7.0 rein,
          Version hat GHSA-rxg9-xrhp-64gj (kritisch) -> auf .NET-10-Serie heben. -->
-    <PackageVersion Include="System.Drawing.Common" Version="10.0.9" />
+    <PackageVersion Include="System.Drawing.Common" Version="10.0.11" />
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- Zentrale Konfiguration/Bereiche auf FOC-SQL01. Bewusst NUR das
          SqlServer-Paket: Microsoft.EntityFrameworkCore.Design (Migrationen) zoege
@@ -67,9 +67,9 @@
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
 
     <!-- Tests -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-    <PackageVersion Include="xunit.v3" Version="3.2.2" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="FluentAssertions" Version="[7.2.2,8.0.0)" />
   </ItemGroup>
 
