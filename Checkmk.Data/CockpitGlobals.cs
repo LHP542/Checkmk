@@ -32,6 +32,7 @@ public sealed class CockpitGlobals
     public const string KeyHostOsAttributeKeys = "HostOsAttributeKeys";
     public const string KeyHostLocationTagKeys = "HostLocationTagKeys";
     public const string KeyShowHostCreation    = "ShowHostCreation";
+    public const string KeyShowHostsTab        = "ShowHostsTab";
     public const string KeyMapWmsUrl           = "MapWmsUrl";
     public const string KeyMapWmsLayer         = "MapWmsLayer";
     public const string KeyMapAttribution      = "MapAttribution";
@@ -74,6 +75,18 @@ public sealed class CockpitGlobals
 
     /// <summary>Blendet das „Host anlegen"-Formular ein. Default false.</summary>
     public bool ShowHostCreation { get; init; }
+
+    /// <summary>
+    /// Blendet den Hosts-Tab ein. <b>Default false</b> — die Setup-Handgriffe
+    /// laufen zentral, und im Alltag braucht ihn niemand. Wer Service-Discovery
+    /// oder „Aenderungen aktivieren" doch benoetigt, setzt die Zeile in
+    /// GlobalSetting auf true; ein neues Binary ist dafuer nicht noetig.
+    ///
+    /// Die Host-Attribute (OS-Familie, Ortstags) laedt seit v1.18.0 der
+    /// HostFactsLoader beim Start — sie haengen nicht mehr daran, dass jemand
+    /// diesen Tab oeffnet.
+    /// </summary>
+    public bool ShowHostsTab { get; init; }
 
     /// <summary>
     /// WMS-Basisadresse der Kartenkacheln. Vorgabe sind die Digitalen
@@ -166,6 +179,7 @@ public sealed class CockpitGlobals
             HostOsAttributeKeys = StringList(KeyHostOsAttributeKeys) ?? fallback.HostOsAttributeKeys,
             HostLocationTagKeys = StringList(KeyHostLocationTagKeys) ?? fallback.HostLocationTagKeys,
             ShowHostCreation  = Bool(KeyShowHostCreation) ?? fallback.ShowHostCreation,
+            ShowHostsTab      = Bool(KeyShowHostsTab) ?? fallback.ShowHostsTab,
             MapWmsUrl         = Text(KeyMapWmsUrl)        ?? fallback.MapWmsUrl,
             MapWmsLayer       = Text(KeyMapWmsLayer)      ?? fallback.MapWmsLayer,
             MapAttribution    = Text(KeyMapAttribution)   ?? fallback.MapAttribution,
@@ -232,6 +246,7 @@ public sealed class CockpitGlobals
         [KeyHostOsAttributeKeys] = JsonSerializer.Serialize(HostOsAttributeKeys),
         [KeyHostLocationTagKeys] = JsonSerializer.Serialize(HostLocationTagKeys),
         [KeyShowHostCreation]    = ShowHostCreation.ToString(),
+        [KeyShowHostsTab]        = ShowHostsTab.ToString(),
         [KeyMapWmsUrl]           = MapWmsUrl,
         [KeyMapWmsLayer]         = MapWmsLayer,
         [KeyMapAttribution]      = MapAttribution,

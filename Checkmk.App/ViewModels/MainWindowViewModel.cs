@@ -16,6 +16,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly IUpdatePreferences _updatePrefs;
     private readonly ViewerMode _viewer;
     private readonly IGlobalSettingsProvider _globals;
+    private readonly HostFactsLoader _hostFacts;
 
     /// <summary>Beide nur gesetzt, wenn eine zentrale Datenbank konfiguriert ist.</summary>
     private readonly DbHostDomainStore? _hostDomains;
@@ -125,6 +126,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         IUpdatePreferences updatePrefs,
         ViewerMode viewer,
         IGlobalSettingsProvider globals,
+        HostFactsLoader hostFacts,
         DbHostDomainStore? hostDomains = null,
         CockpitDatabase? database = null,
         AreaViewModel? areas = null)
@@ -138,6 +140,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _updatePrefs = updatePrefs;
         _viewer = viewer;
         _globals = globals;
+        _hostFacts = hostFacts;
         _hostDomains = hostDomains;
         _database = database;
         Areas = areas;
@@ -241,7 +244,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         await Status.RefreshCommand.ExecuteAsync(null);
         if (_viewer.IsActive) return;
-        await Config.RefreshHostsCommand.ExecuteAsync(null);
+
+        // Host-Attribute ausdruecklich nachladen, nicht als Nebenwirkung eines
+        // Tabs. Nach einem Site-Wechsel gelten andere Ortstags — ohne diesen
+        // Aufruf arbeitete „Tags zuordnen…" auf schul_it mit den Tags von LHP.
+        if (_globals.Current.ShowHostsTab)
+            await Config.RefreshHostsCommand.ExecuteAsync(null);   // laedt sie mit
+        else
+            await _hostFacts.RefreshAsync();
+
         await Dashboard.RefreshCommand.ExecuteAsync(null);
     }
 

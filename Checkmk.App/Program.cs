@@ -311,6 +311,7 @@ internal static class Program
 
         services.AddSingleton<IHostOsCache, HostOsCache>();
         services.AddSingleton<IHostLocationTags, HostLocationTagCache>();
+        services.AddSingleton<HostFactsLoader>();
         services.AddSingleton<HostContext>();
         services.AddSingleton<ISshCredentialStore, SshCredentialStore>();
         services.AddSingleton<RemoteTools>();

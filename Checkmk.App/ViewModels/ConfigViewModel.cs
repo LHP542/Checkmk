@@ -14,8 +14,7 @@ public sealed partial class ConfigViewModel : ViewModelBase
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
     private readonly ICheckmkClientProvider _clients;
-    private readonly IHostOsCache _osCache;
-    private readonly IHostLocationTags _locationTags;
+    private readonly HostFactsLoader _facts;
     private List<CheckmkObject<HostConfigExtensions>> _allHosts = [];
 
     public HostFilterCollection Filters { get; }
@@ -43,12 +42,11 @@ public sealed partial class ConfigViewModel : ViewModelBase
     private string _newHostAlias = "";
 
     public ConfigViewModel(ICheckmkClientProvider clients, HostFilterCollection filters,
-        IHostOsCache osCache, IHostLocationTags locationTags, IGlobalSettingsProvider globals)
+        HostFactsLoader facts, IGlobalSettingsProvider globals)
     {
         _clients = clients;
         Filters = filters;
-        _osCache = osCache;
-        _locationTags = locationTags;
+        _facts = facts;
         IsHostCreationVisible = globals.Current.ShowHostCreation;
         Filters.PropertyChanged += (_, e) =>
         {
@@ -66,12 +64,11 @@ public sealed partial class ConfigViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            // effective_attributes=true: sonst kommen vererbte Custom Attributes
-            // (z. B. "Operation System" auf Folder-Ebene gesetzt) nicht durch.
-            var hosts = await client.GetHostConfigsAsync(effectiveAttributes: true);
+            // Ueber den HostFactsLoader, damit die beiden Caches an EINER Stelle
+            // gefuellt werden. Frueher passierte das hier nebenbei — wer den
+            // Hosts-Tab nie oeffnete, hatte weder OS-Symbole noch Ortstags.
+            var hosts = await _facts.LoadAsync();
             _allHosts = hosts.OrderBy(h => h.Id).ToList();
-            _osCache.ApplyFromHostConfigs(_allHosts);
-            _locationTags.ApplyFromHostConfigs(_allHosts);
             ApplyFilter();
             StatusMessage = Filters.Active is { } f
                 ? $"{Hosts.Count} von {hosts.Count} Hosts (Filter: {f.Name})."

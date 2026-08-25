@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using Checkmk.App.Controls;
 using Checkmk.App.Services;
 using Checkmk.App.ViewModels;
+using Checkmk.Data;
 using Checkmk.PluginContracts;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
@@ -37,9 +38,14 @@ public partial class MainWindow : ChromeWindow
         var viewer = App.Services?.GetService<ViewerMode>();
         _canWrite = viewer?.CanWrite ?? true;
         if (viewer?.IsActive == true)
+        {
             RemoveNonViewerTabs();
+        }
         else
+        {
             SetUpAreasTab();
+            SetUpHostsTab();
+        }
 
         Opened += (_, _) => AddPluginTabs();
 
@@ -51,6 +57,13 @@ public partial class MainWindow : ChromeWindow
         {
             if (App.Services?.GetService<HostFilterCollection>() is { } filters)
                 _ = filters.InitializeAsync();
+
+            // Host-Attribute (OS-Familie, Ortstags) einmal beim Start holen.
+            // Frueher passierte das nur, wenn jemand den Hosts-Tab oeffnete —
+            // seit der weg ist, waeren OS-Symbole und „Tags zuordnen…" sonst
+            // dauerhaft leer, ohne dass es eine Fehlermeldung gaebe.
+            if (App.Services?.GetService<HostFactsLoader>() is { } facts)
+                _ = facts.RefreshAsync();
         };
 
         // Spaltenbreiten einfangen: Avalonias DataGrid meldet das Ende eines
@@ -86,6 +99,28 @@ public partial class MainWindow : ChromeWindow
 
         if (keepAreas) SetUpAreasTab();
         tabs.SelectedIndex = 0;
+    }
+
+    /// <summary>
+    /// Entfernt den Hosts-Tab, solange <c>GlobalSetting.ShowHostsTab</c> nicht
+    /// auf true steht (Vorgabe: false).
+    ///
+    /// <b>Entfernt, nicht per <c>IsVisible</c> versteckt</b> — dieselbe Regel wie
+    /// im Viewer-Modus: Ein nur ausgeblendeter Tab bleibt per Ctrl+Tab
+    /// erreichbar.
+    ///
+    /// Die Host-Attribute, die dieser Tab früher nebenbei geladen hat, holt
+    /// jetzt <see cref="HostFactsLoader"/> beim Start. Ohne diese Verlagerung
+    /// hätte das Ausblenden OS-Symbole und Ortstag-Zuordnung still
+    /// mitabgeschaltet.
+    /// </summary>
+    private void SetUpHostsTab()
+    {
+        var globals = App.Services?.GetService<IGlobalSettingsProvider>();
+        if (globals?.Current.ShowHostsTab == true) return;
+
+        if (this.FindControl<TabControl>("MainTabs") is not { } tabs) return;
+        if (this.FindControl<TabItem>("HostsTab") is { } tab) tabs.Items.Remove(tab);
     }
 
     /// <summary>

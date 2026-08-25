@@ -472,13 +472,30 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   beim ersten `Show()`-Call laufen zu lassen. Nach jedem `Show()` wird
   `Notifier.Setting` geloggt — Windows sagt uns direkt, ob es blockt
   (Focus Assist, DisabledForApplication, GroupPolicy).
-- **Hosts-Tab** (früher „Konfiguration"): Host-Liste mit Ordner/IP/Alias, „Änderungen aktivieren",
-  **Service Discovery** (Toolbar-Button + Rechtsklick auf einer Zeile): startet
-  `fix_all` als Hintergrund-Task auf dem Server, pollt bis `active=false`, aktiviert
-  danach die Änderungen — bringt vorhandene Hosts wie `DBSQL01` ins Monitoring.
-  Das „Host anlegen"-Formular ist per Default **ausgeblendet** (Setup-Handgriffe
-  laufen zentral, Fehlbedienung produziert Config-Änderungen); wieder einblenden
-  über `%APPDATA%\Kroste\Checkmk\bootstrap.json` mit `"showHostCreation": true`.
+- **Hosts-Tab** (früher „Konfiguration") — **seit v1.18.0 per Default aus**
+  (`GlobalSetting.ShowHostsTab`, Vorgabe false). Im Alltag braucht ihn niemand:
+  Setup-Handgriffe laufen zentral. Wer Service Discovery oder „Änderungen
+  aktivieren" doch benötigt, setzt die Zeile auf `true` — ein neues Binary ist
+  dafür nicht nötig. Der Tab wird **entfernt, nicht per `IsVisible` versteckt**,
+  sonst bleibt er per Ctrl+Tab erreichbar (dieselbe Regel wie im Viewer-Modus).
+
+  Inhalt, wenn eingeschaltet: Host-Liste mit Ordner/IP/Alias, „Änderungen
+  aktivieren", **Service Discovery** (Toolbar-Button + Rechtsklick auf einer
+  Zeile): startet `fix_all` als Hintergrund-Task auf dem Server, pollt bis
+  `active=false`, aktiviert danach die Änderungen. Das „Host anlegen"-Formular
+  ist zusätzlich per `ShowHostCreation` geschützt.
+
+  **Die Host-Attribute lädt seit v1.18.0 `HostFactsLoader`, nicht mehr dieser
+  Tab.** Vorher füllte `ConfigViewModel.RefreshHostsAsync` als Nebenwirkung die
+  beiden Caches, an denen ganz andere Ansichten hängen: `IHostOsCache`
+  (OS-Pictogramme im Statusbaum) und `IHostLocationTags` (Ortstags für
+  „Tags zuordnen…"). Wer den Tab nie öffnete, hatte beides nicht — und mit dem
+  Ausblenden wäre daraus ein stiller Totalausfall geworden. Geladen wird jetzt
+  beim Start und nach jedem Site-Wechsel; **letzteres ist Pflicht**, weil auf
+  `schul_it` andere Ortstags gelten als auf `LHP`. Nicht bei jedem
+  Status-Refresh: die Abfrage holt mit `effective_attributes=true` die
+  vererbten Attribute aller ~1400 Hosts, und OS wie Ortstag ändern sich im
+  Setup, nicht im Betrieb.
 - **Host-Details** (`HostDetailWindow`): Doppelklick oder Rechtsklick auf eine Zeile
   öffnet ein eigenes Fenster mit Host-State (Ampel + **In-Wartung-** und
   **Acknowledged-Badge**), Config-Attributen (Ordner/IP/Alias), Plugin-Output,
