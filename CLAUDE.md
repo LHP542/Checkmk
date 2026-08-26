@@ -651,8 +651,42 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   Ein unerreichbarer Ordner ist `Debug`, nicht `Error`: Ein Notebook ohne
   Netzlaufwerk ist der Normalfall, nicht die Störung.
 - **Host-Filter (beide Tabs):** Persistente Favoriten wählbar über eine ComboBox in der Tool-
-  bar. Ein Favorit ist entweder ein **Hostname-Regex** (case-insensitive) oder eine explizite
-  **Include-Liste** von Hostnamen. Aus dem Hosts-Tab lassen sich per Ctrl+Klick mehrere Hosts
+  bar. Ein Favorit ist entweder ein **Regex** (case-insensitive) oder eine explizite
+  **Include-Liste** von Hostnamen.
+
+  **Der Regex geht wahlweise auf den Hostnamen oder den Host-Alias**
+  (Schema 8, `HostFilter.MatchTarget`, `FilterTarget` im Modell). Der Alias
+  trägt bei uns die zugeordneten Benutzer (`„SchmidtT; WenzelM; OsteL"`) — ein
+  Filter auf den eigenen Anmeldenamen liefert damit „alle meine Rechner", ohne
+  dass jemand eine Host-Liste pflegen müsste. Vier Punkte:
+  1. **Serverseitig, nicht clientseitig.** `host_alias` ist eine
+     Standard-Livestatus-Spalte und wird ohnehin mitabgefragt; der Filter geht
+     als `~~`-Ausdruck auf `host_alias` mit in die Query. Wäre er clientseitig,
+     müsste die App für „alle meine Rechner" erst alle ~33.000 Checks ziehen.
+  2. **Kein Rückfall auf den Hostnamen, wenn der Alias leer ist.** Der Rückfall
+     wäre bequem und falsch: „alle meine Geräte" würde stillschweigend jedes
+     Gerät einsammeln, dessen Alias schlicht nicht gepflegt ist.
+  3. **Betrifft nur den Regex.** Die Include-Liste bleibt eine Liste von
+     *Hostnamen* — sie entsteht aus „Auswahl als Favorit…", also aus
+     angeklickten Geräten.
+  4. **Das Ziel gehört in die Anzeige** (Katalog-Vorschau, Viewer-Log):
+     Derselbe Ausdruck bedeutet gegen den Alias etwas völlig anderes als gegen
+     den Hostnamen.
+
+  **Zwei Filter stehen auf einem frischen Rechner schon da**
+  (`HostFilterCollection.SeedStarterFilters`): „Alle Hosts" und „Meine Geräte"
+  (Anmeldename gegen den Alias), letzterer aktiv. Wer das Cockpit zum ersten
+  Mal startet, sähe sonst alle Checks der Stadt und müsste sich erst einen
+  Filter bauen, um die eigenen Geräte zu finden. Drei Punkte:
+  1. **Ganz normale persönliche Filter** — umbenennbar, änderbar, löschbar.
+     Nichts Eingebautes, das man nicht loswird.
+  2. **Genau einmal je Site**, gemerkt in `HostFilterState.Seeded` statt am
+     leeren Bestand erkannt. Sonst kämen beide beim nächsten Start zurück,
+     sobald jemand sie weggeräumt hat.
+  3. **Bei Datenbank-Ausfall wird nicht gesät** (`CanEdit`): Zwei Filter, die
+     nur im Cache stehen, wären beim nächsten erfolgreichen Laden weg.
+  Der Anmeldename wandert per `Regex.Escape` in den Ausdruck — ein Punkt in
+  `max.mustermann` wäre sonst ein Platzhalter. Aus dem Hosts-Tab lassen sich per Ctrl+Klick mehrere Hosts
   markieren und mit „Auswahl als Favorit…" als benannte Liste speichern. Verwaltung
   (Anlegen/Bearbeiten/Löschen/Aktivieren) im `FilterManagerWindow`.
   Anwendung ist rein clientside (bei ≤ ein paar tausend Hosts problemlos);
@@ -775,7 +809,10 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      des Rechners, auf dem das Profil gebaut wurde: deren `ActiveFilterName` überstimmte
      die Vorgabe und die fremden Favoriten standen im Dropdown. Nicht auf „nur wenn ein
      Host-Bezug da ist" zurückbauen. `view`-Werte im Übrigen sind Startwerte und gehen
-     nicht nach `statusview.json` (`PersistState` ist No-Op).
+     nicht nach `statusview.json` (`PersistState` ist No-Op). `matchAlias: true`
+     prüft `hostRegex` gegen den Host-Alias statt den Hostnamen; die
+     Start-Filter („Alle Hosts"/„Meine Geräte") entstehen im Viewer-Modus
+     bewusst **nicht** — sie kämen aus dem Anmeldenamen des Kiosk-Kontos.
 - **Settings:** Verbindung (Host/Site/User/Secret/HTTPS/Cert), Secret verschlüsselt
   via `WindowsDpapiProtector` (DPAPI-CurrentUser). Ablage user-lokal unter
   `%APPDATA%\Kroste\Checkmk\settings.json`. Zusätzlich `KnownSites: [...]` als

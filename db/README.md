@@ -43,6 +43,7 @@ nicht. Reihenfolge:
 005-area-hostpattern.sql  Namensmuster je Bereich fuer Zuordnungsvorschlaege
 006-area-hosttag.sql      Checkmk-Ortstag je Bereich (der bessere Weg zu 005)
 007-fachbereich-katalog.sql  Filter-Katalog je Fachbereich mit Abo (loest Teams ab)
+008-filter-target.sql        Filter matcht wahlweise auf den Host-Alias statt den Hostnamen
 ```
 
 Optional, kein Schema-Eingriff und ohne Versionssprung:

@@ -156,7 +156,9 @@ public class HostFilterPresetTests
     [Fact]
     public void Applying_a_preset_does_not_persist()
     {
-        var store = new FakeStore();
+        // Seeded: die beiden Start-Filter sind hier nicht das Thema, und ihr
+        // Anlegen wuerde selbst schon einen Schreibvorgang ausloesen.
+        var store = new FakeStore { State = new HostFilterState { Seeded = true } };
         var collection = Build(store);
 
         collection.ApplyPreset(new HostFilter { Name = "Vorgabe", HostNameRegex = "web.*" });
@@ -167,7 +169,7 @@ public class HostFilterPresetTests
     [Fact]
     public void Preset_stays_out_of_the_file_when_the_user_saves_a_favorite_later()
     {
-        var store = new FakeStore();
+        var store = new FakeStore { State = new HostFilterState { Seeded = true } };
         var collection = Build(store);
         collection.ApplyPreset(new HostFilter { Name = "Vorgabe", HostNameRegex = "web.*" });
 
@@ -182,7 +184,7 @@ public class HostFilterPresetTests
     [Fact]
     public void Active_preset_is_not_written_as_the_remembered_selection()
     {
-        var store = new FakeStore();
+        var store = new FakeStore { State = new HostFilterState { Seeded = true } };
         var collection = Build(store);
         collection.ApplyPreset(new HostFilter { Name = "Vorgabe" });
 

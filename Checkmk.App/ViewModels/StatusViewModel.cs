@@ -252,9 +252,9 @@ public sealed partial class StatusViewModel : ViewModelBase
         Filters.ApplyPreset(preset);
 
         // Beim Ausrollen die haeufigste Frage: „welcher Filter greift denn nun?"
-        Log.Info("Viewer-Vorgabe aktiv: Filter '{Filter}' (Regex={Regex}, {Hosts} Hosts explizit), "
+        Log.Info("Viewer-Vorgabe aktiv: Filter '{Filter}' ({Target}-Regex={Regex}, {Hosts} Hosts explizit), "
                + "NurProbleme={OnlyProblems}, NurOffen={OnlyOpen}, AutoRefresh={Auto}/{Sec}s.",
-            preset.Name, preset.HostNameRegex ?? "—", preset.ExplicitHosts.Count,
+            preset.Name, preset.TargetDisplay, preset.HostNameRegex ?? "—", preset.ExplicitHosts.Count,
             OnlyProblems, OnlyOpen, AutoRefresh, RefreshSeconds);
     }
 
@@ -745,7 +745,7 @@ public sealed partial class StatusViewModel : ViewModelBase
         IEnumerable<ServiceStatus> q = all;
 
         if (c.Host is { } activeFilter)
-            q = q.Where(s => activeFilter.Matches(s.HostName));
+            q = q.Where(s => activeFilter.Matches(s.HostName, s.HostAlias));
 
         if (c.OnlyProblems)
             q = q.Where(s => s.ServiceState != ServiceState.Ok);
@@ -800,7 +800,7 @@ public sealed partial class StatusViewModel : ViewModelBase
         IEnumerable<ServiceStatus> q = _allServices;
 
         if (Filters.Active is { } activeFilter)
-            q = q.Where(s => activeFilter.Matches(s.HostName));
+            q = q.Where(s => activeFilter.Matches(s.HostName, s.HostAlias));
 
         if (!string.IsNullOrWhiteSpace(FilterText))
         {

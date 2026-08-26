@@ -305,6 +305,39 @@ In der Toolbar (Status-Tab **und** Hosts-Tab) gibt es die Combobox
 nur noch die passenden Hosts sichtbar. Zurück auf alle: Auswahl leeren
 („(Alle Hosts)").
 
+### Zwei Favoriten sind von Anfang an da
+
+Beim ersten Start legt das Cockpit zwei Filter an:
+
+- **„Alle Hosts"** — kein Regex, keine Liste: alles.
+- **„Meine Geräte"** — dein Anmeldename gegen den **Host-Alias**. Er ist beim
+  Start vorgewählt.
+
+Beide sind ganz normale persönliche Favoriten: umbenennen, ändern, löschen —
+alles erlaubt. Weggeräumt bleiben sie weg, sie kommen beim nächsten Start nicht
+zurück.
+
+> Steht dein Kürzel in keinem Alias, ist „Meine Geräte" leer. Das ist kein
+> Fehler — schalt in der Combobox auf „Alle Hosts" um.
+
+### Nach Alias filtern statt nach Hostname
+
+Bei uns steht im **Alias** eines Hosts, wem das Gerät zugeordnet ist — Werte
+wie `SchmidtT; WenzelM; OsteL`. Der Filter-Editor hat deshalb die Auswahl
+**„Regex vergleichen mit: Hostname / Alias"**. Auf `Alias` gestellt und den
+eigenen Anmeldenamen als Regex eingetragen, hast du „alle meine Rechner", ohne
+eine einzige Hostliste zu pflegen.
+
+Zwei Dinge dazu:
+
+- Die Auswahl gehört **zum Filter**, nicht zur Ansicht — sie wird mitgespeichert
+  und mitveröffentlicht.
+- Ein Host **ohne** Alias fällt bei einem Alias-Filter heraus. Es gibt bewusst
+  keinen Rückfall auf den Hostnamen: sonst sammelte „alle meine Geräte" still
+  alles ein, dessen Alias nur nicht gepflegt ist.
+- Die **explizite Hostliste** bleibt davon unberührt — sie sind und bleiben
+  Hostnamen.
+
 ### Favoriten pro Site
 
 Favoriten sind **pro Site** organisiert — in der Site `LHP-Prod` andere als in
@@ -328,8 +361,9 @@ das Tool automatisch einen neuen an — der Klick landet nie ins Leere.
 Favoriten der aktuellen Site. Rechts der Editor mit drei Feldern:
 
 - **Name** — was in der Combobox erscheint.
-- **Gehört zu** — *persönlich* oder ein **Team**. Siehe unten.
-- **Hostname-Regex** — .NET-Regex, case-insensitive. Siehe
+- **Veröffentlicht in** — *nur für mich* oder ein **Fachbereich**. Siehe unten.
+- **Regex vergleichen mit** — **Hostname** oder **Alias**. Siehe unten.
+- **Regex** — .NET-Regex, case-insensitive. Siehe
   [Abschnitt 8](#8-regex-beispiele-für-filter) für ausführliche Beispiele.
 - **Explizite Hostnamen** — eine feste Liste, ein Hostname pro Zeile. Wenn hier
   etwas steht, wird das **Regex ignoriert** — es zählen exakt diese Hostnamen.
@@ -1095,6 +1129,7 @@ hole Fenster nach vorn und springe auf TUER-CTRL02/Zutrittskontrolle.
 |---|---|---|
 | `filterName` | `Vorgabe` | Name des vorgewählten Filters in der ComboBox |
 | `hostRegex` | — | Host-Regex (case-insensitive) |
+| `matchAlias` | `false` | `hostRegex` gegen den Host-**Alias** prüfen statt gegen den Hostnamen |
 | `includeHosts` | `[]` | explizite Hostliste; hat Vorrang vor `hostRegex` |
 | `filterText` | `""` | Freitext-Filter |
 | `onlyProblems` | `true` | „Nur Probleme" vorbelegen |

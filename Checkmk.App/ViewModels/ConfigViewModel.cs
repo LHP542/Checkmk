@@ -87,7 +87,7 @@ public sealed partial class ConfigViewModel : ViewModelBase
         Hosts.Clear();
         IEnumerable<CheckmkObject<HostConfigExtensions>> q = _allHosts;
         if (Filters.Active is { } activeFilter)
-            q = q.Where(h => activeFilter.Matches(h.Id ?? ""));
+            q = q.Where(h => activeFilter.Matches(h.Id ?? "", h.Extensions?.Attributes?.Alias));
         foreach (var h in q) Hosts.Add(h);
     }
 

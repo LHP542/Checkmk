@@ -178,6 +178,11 @@ public sealed class HostFilterRow
     public string Site { get; set; } = "";
     public string Name { get; set; } = "";
     public string? HostNameRegex { get; set; }
+
+    /// <summary>0 = Hostname (Vorgabe), 1 = Host-Alias. Betrifft nur den Regex,
+    /// nicht die Include-Liste.</summary>
+    public byte MatchTarget { get; set; }
+
     public DateTime ChangedAtUtc { get; set; }
     public string ChangedBy { get; set; } = "";
 }

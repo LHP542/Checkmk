@@ -75,10 +75,24 @@
                       DisplayMemberBinding="{Binding Label}"
                       ToolTip.Tip="„nur für mich“ bleibt privat. In einen Fachbereich veröffentlicht steht der Filter im Katalog, und jeder kann ihn abonnieren." />
           </StackPanel>
+          <!-- Der Regex geht wahlweise auf den Hostnamen oder den Alias. Zwei
+               RadioButtons statt einer ComboBox: die Alternative soll sichtbar
+               sein, nicht hinter einem Klick liegen. Betrifft nur den Regex —
+               die Liste darunter bleibt eine Liste von Hostnamen. -->
           <StackPanel Spacing="3">
-            <TextBlock Text="Hostname-Regex (case-insensitive, leer = Regel inaktiv)"
+            <TextBlock Text="Regex vergleichen mit" Foreground="#AAAAAA" FontSize="12" />
+            <StackPanel Orientation="Horizontal" Spacing="16">
+              <RadioButton GroupName="MatchTarget" Content="Hostname"
+                           IsChecked="{Binding !EditMatchesAlias}" />
+              <RadioButton GroupName="MatchTarget" Content="Alias"
+                           IsChecked="{Binding EditMatchesAlias}"
+                           ToolTip.Tip="Der Alias trägt bei uns die zugeordneten Benutzer — ein Filter auf den eigenen Anmeldenamen liefert „alle meine Rechner“." />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Spacing="3">
+            <TextBlock Text="{Binding RegexLabel}"
                        Foreground="#AAAAAA" FontSize="12" />
-            <TextBox Text="{Binding EditRegex}" PlaceholderText="^db-.*|.*sql.*$" />
+            <TextBox Text="{Binding EditRegex}" PlaceholderText="{Binding RegexPlaceholder}" />
             <TextBlock Text="{Binding ValidationMessage}" Foreground="#EF5350" FontSize="12"
                        TextWrapping="Wrap"
                        IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

@@ -36,6 +36,24 @@ public sealed partial class FilterManagerViewModel : ObservableObject
     [ObservableProperty] private string _editExplicitHosts = "";
     [ObservableProperty] private FilterScope? _editScope;
 
+    /// <summary>
+    /// Worauf der Regex geht. Als <c>bool</c> statt als Enum-Auswahl, weil es
+    /// genau zwei Möglichkeiten gibt und zwei RadioButtons beide gleichzeitig
+    /// zeigen — eine ComboBox verbirgt die Alternative hinter einem Klick.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RegexLabel))]
+    [NotifyPropertyChangedFor(nameof(RegexPlaceholder))]
+    private bool _editMatchesAlias;
+
+    /// <summary>Beschriftung des Regex-Feldes — sie benennt das Ziel mit, damit
+    /// beim späteren Wiederöffnen klar ist, wogegen der Ausdruck läuft.</summary>
+    public string RegexLabel => EditMatchesAlias
+        ? "Alias-Regex (case-insensitive, leer = Regel inaktiv)"
+        : "Hostname-Regex (case-insensitive, leer = Regel inaktiv)";
+
+    public string RegexPlaceholder => EditMatchesAlias ? "OsteL" : "^db-.*|.*sql.*$";
+
     /// <summary>Fehlermeldung fuer den Editor (v. a. Regex-Validierung).</summary>
     [ObservableProperty] private string _validationMessage = "";
 
@@ -183,6 +201,7 @@ public sealed partial class FilterManagerViewModel : ObservableObject
 
         item.Name = string.IsNullOrWhiteSpace(EditName) ? "unbenannt" : EditName.Trim();
         item.HostNameRegex = regex;
+        item.Target = EditMatchesAlias ? FilterTarget.Alias : FilterTarget.HostName;
         item.ExplicitHosts = EditExplicitHosts
             .Split(['\n', '\r', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
@@ -238,11 +257,13 @@ public sealed partial class FilterManagerViewModel : ObservableObject
             EditName = "";
             EditRegex = "";
             EditExplicitHosts = "";
+            EditMatchesAlias = false;
             EditScope = Scopes.FirstOrDefault();
             return;
         }
         EditName = Selected.Name;
         EditRegex = Selected.HostNameRegex ?? "";
+        EditMatchesAlias = Selected.Target == FilterTarget.Alias;
         EditExplicitHosts = string.Join(Environment.NewLine, Selected.ExplicitHosts);
         EditScope = Scopes.FirstOrDefault(o => o.FachbereichId == Selected.FachbereichId)
                     ?? Scopes.FirstOrDefault();

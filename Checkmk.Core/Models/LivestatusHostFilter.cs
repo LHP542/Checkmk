@@ -13,11 +13,20 @@ public sealed record LivestatusHostFilter
     /// <summary>Case-insensitive Regex auf <c>host_name</c>.</summary>
     public string? HostNameRegex { get; init; }
 
+    /// <summary>
+    /// Case-insensitive Regex auf <c>host_alias</c>.
+    ///
+    /// Eine Standard-Livestatus-Spalte, die ohnehin mit abgefragt wird — das
+    /// Filtern nach Alias kostet serverseitig also nichts extra.
+    /// </summary>
+    public string? HostAliasRegex { get; init; }
+
     /// <summary>Exakte Hostnamen (OR-Verkettung).</summary>
     public IReadOnlyList<string>? IncludeHosts { get; init; }
 
     public bool IsEmpty
         => string.IsNullOrWhiteSpace(HostNameRegex)
+           && string.IsNullOrWhiteSpace(HostAliasRegex)
            && (IncludeHosts is null || IncludeHosts.Count == 0);
 
     /// <summary>
@@ -51,6 +60,9 @@ public sealed record LivestatusHostFilter
             // Livestatus: "~~" == Regex, case-insensitive.
             return new { op = "~~", left = "host_name", right = HostNameRegex };
         }
+
+        if (!string.IsNullOrWhiteSpace(HostAliasRegex))
+            return new { op = "~~", left = "host_alias", right = HostAliasRegex };
 
         return null;
     }

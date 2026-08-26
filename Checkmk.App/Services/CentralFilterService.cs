@@ -230,6 +230,7 @@ public sealed class CentralFilterService(
         Subscribers = f.Subscribers,
         Name = f.Name,
         HostNameRegex = f.HostNameRegex,
+        Target = f.Target,
         ExplicitHosts = [.. f.ExplicitHosts]
     };
 
@@ -242,6 +243,7 @@ public sealed class CentralFilterService(
         Subscribers = s.Subscribers,
         Name = s.Name,
         HostNameRegex = s.HostNameRegex,
+        Target = s.MatchTarget == 1 ? FilterTarget.Alias : FilterTarget.HostName,
         ExplicitHosts = [.. s.Hosts]
     };
 
@@ -250,12 +252,14 @@ public sealed class CentralFilterService(
         string.IsNullOrEmpty(f.Owner) ? userName : f.Owner,
         site,
         string.IsNullOrWhiteSpace(f.Name) ? "unbenannt" : f.Name,
-        f.HostNameRegex, f.ExplicitHosts, f.Subscribers);
+        f.HostNameRegex, f.ExplicitHosts, f.Subscribers,
+        f.Target == FilterTarget.Alias ? (byte)1 : (byte)0);
 
     private static bool Differs(HostFilter a, HostFilter b)
         => a.FachbereichId != b.FachbereichId
         || !string.Equals(a.Name, b.Name, StringComparison.Ordinal)
         || !string.Equals(a.HostNameRegex, b.HostNameRegex, StringComparison.Ordinal)
+        || a.Target != b.Target
         || !a.ExplicitHosts.OrderBy(h => h, StringComparer.OrdinalIgnoreCase)
               .SequenceEqual(b.ExplicitHosts.OrderBy(h => h, StringComparer.OrdinalIgnoreCase),
                              StringComparer.OrdinalIgnoreCase);

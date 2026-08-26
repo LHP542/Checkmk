@@ -20,6 +20,9 @@ public sealed class HostFilterCollection : ObservableObject
     private string _currentSite;
     private bool _suppressPersist;
 
+    /// <summary>Wurden die Start-Filter für die aktuelle Site schon angelegt?</summary>
+    private bool _seeded;
+
     public ObservableCollection<HostFilter> Filters { get; } = new();
 
     /// <summary>
@@ -127,6 +130,7 @@ public sealed class HostFilterCollection : ObservableObject
         try
         {
             var s = _store.Load(_currentSite);
+            _seeded = s.Seeded;
             Filters.Clear();
             foreach (var f in s.Filters)
             {
@@ -140,6 +144,74 @@ public sealed class HostFilterCollection : ObservableObject
         }
         finally { _suppressPersist = false; }
         OnPropertyChanged(nameof(Active));
+
+        // Ohne Datenbank steht der Bestand hier schon fest. Mit Datenbank nicht —
+        // dann saet erst LoadCentralAsync, sonst legten wir zwei Filter an, die
+        // gleich darauf vom zentralen Stand ueberschrieben wuerden.
+        if (_central is null) SeedStarterFilters();
+    }
+
+    /// <summary>Name des Filters, der alle Hosts zeigt.</summary>
+    public const string AllHostsFilterName = "Alle Hosts";
+
+    /// <summary>Name des Filters auf den eigenen Anmeldenamen im Host-Alias.</summary>
+    public const string MyDevicesFilterName = "Meine Geräte";
+
+    /// <summary>
+    /// Legt auf einem frischen Rechner zwei Filter an: „Alle Hosts" und
+    /// „Meine Geräte" (Anmeldename gegen den Host-Alias), und stellt den
+    /// zweiten scharf.
+    ///
+    /// <para>Der Grund ist der Erstkontakt: Wer das Cockpit zum ersten Mal
+    /// startet, sieht sonst alle 33.000 Checks der Stadt und muss sich erst
+    /// einen Filter bauen, um seine eigenen Geräte zu finden. Beide Filter sind
+    /// ganz normale persönliche Filter — umbenennbar, änderbar, löschbar.</para>
+    ///
+    /// <para><b>Genau einmal je Site</b> (<see cref="HostFilterState.Seeded"/>):
+    /// Wer sie wegräumt, soll sie nicht beim nächsten Start wiederhaben.</para>
+    /// </summary>
+    private void SeedStarterFilters()
+    {
+        if (_viewerMode || _seeded) return;
+        if (string.IsNullOrWhiteSpace(_currentSite)) return;
+        if (!CanEdit) return;
+
+        // Schon Filter da? Dann ist das kein frischer Rechner, sondern ein
+        // Bestand aus der Zeit vor dieser Funktion — der bleibt unangetastet.
+        if (Filters.Any(f => !f.IsTransient)) { MarkSeeded(); return; }
+
+        var user = UserName;
+        if (string.IsNullOrWhiteSpace(user)) return;
+
+        _suppressPersist = true;
+        try
+        {
+            Filters.Add(new HostFilter { Name = AllHostsFilterName, Owner = user });
+
+            // Regex.Escape, weil der Anmeldename in den Ausdruck wandert:
+            // ein Punkt in „max.mustermann" ist sonst ein Platzhalter.
+            var mine = new HostFilter
+            {
+                Name = MyDevicesFilterName,
+                Owner = user,
+                Target = FilterTarget.Alias,
+                HostNameRegex = System.Text.RegularExpressions.Regex.Escape(user)
+            };
+            Filters.Add(mine);
+            _active = mine;
+        }
+        finally { _suppressPersist = false; }
+
+        _seeded = true;
+        OnPropertyChanged(nameof(Active));
+        Persist();
+    }
+
+    /// <summary>Merkt „schon gesät", ohne etwas anzulegen — für Bestandsrechner.</summary>
+    private void MarkSeeded()
+    {
+        _seeded = true;
+        Persist();
     }
 
     /// <summary>
@@ -182,6 +254,11 @@ public sealed class HostFilterCollection : ObservableObject
         OnPropertyChanged(nameof(IsCentral));
         OnPropertyChanged(nameof(CanEdit));
         OnPropertyChanged(nameof(StatusHint));
+
+        // Erst jetzt: der zentrale Stand ist der massgebliche. Bei Ausfall
+        // (Origin = Cache, CanEdit false) wird nicht gesaet — zwei Filter, die
+        // nur im Cache stehen, waeren beim naechsten erfolgreichen Laden weg.
+        SeedStarterFilters();
     }
 
     /// <summary>Wechselt das Filter-Set auf die neue Site. Persistiert erst die aktuelle
@@ -277,7 +354,8 @@ public sealed class HostFilterCollection : ObservableObject
             // Transiente Vorgabe-Filter bleiben draussen — sie gehoeren dem Profil,
             // nicht der Favoritenbibliothek des Anwenders.
             Filters = Filters.Where(f => !f.IsTransient).ToList(),
-            ActiveFilterName = _active is { IsTransient: false } ? _active.Name : null
+            ActiveFilterName = _active is { IsTransient: false } ? _active.Name : null,
+            Seeded = _seeded
         };
 
         if (_central is null)
@@ -292,7 +370,8 @@ public sealed class HostFilterCollection : ObservableObject
         _store.Save(_currentSite, new HostFilterState
         {
             Filters = state.Filters,          // zugleich der Ausfall-Lesestand
-            ActiveFilterName = state.ActiveFilterName
+            ActiveFilterName = state.ActiveFilterName,
+            Seeded = state.Seeded
         });
 
         var deleted = _deleted.ToList();

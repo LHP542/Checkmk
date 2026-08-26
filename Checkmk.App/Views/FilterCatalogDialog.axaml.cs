@@ -53,7 +53,9 @@ public sealed partial class CatalogEntry : ObservableObject
           + (_filter.ExplicitHosts.Count > 4 ? " …" : "")
         : string.IsNullOrWhiteSpace(_filter.HostNameRegex)
             ? "alle Hosts"
-            : _filter.HostNameRegex;
+            // Das Ziel gehoert dazu: derselbe Ausdruck bedeutet gegen den Alias
+            // etwas voellig anderes als gegen den Hostnamen.
+            : $"{_filter.TargetDisplay} ~ {_filter.HostNameRegex}";
 
     public string Matches => _matchCount >= 0
         ? $"trifft gerade {_matchCount} Hosts"
@@ -82,7 +84,8 @@ public partial class FilterCatalogDialog : ChromeWindow
     private readonly List<CatalogEntry> _all = [];
 
     public FilterCatalogDialog(IReadOnlyList<HostFilter> catalog,
-        IReadOnlyList<int> subscribed, string user, IReadOnlyList<string> knownHosts)
+        IReadOnlyList<int> subscribed, string user,
+        IReadOnlyList<(string Host, string? Alias)> knownHosts)
     {
         AvaloniaXamlLoader.Load(this);
 
@@ -92,7 +95,9 @@ public partial class FilterCatalogDialog : ChromeWindow
             .ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
             .Select(f => new CatalogEntry(f, user,
                 subs.Contains(f.Id) || f.IsAuthor(user),
-                knownHosts.Count == 0 ? -1 : knownHosts.Count(f.Matches)))];
+                knownHosts.Count == 0
+                    ? -1
+                    : knownHosts.Count(h => f.Matches(h.Host, h.Alias))))];
 
         foreach (var e in _all) e.PropertyChanged += (_, _) => UpdateCount();
 

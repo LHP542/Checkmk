@@ -120,6 +120,13 @@ public sealed class ViewerView
     /// vor <see cref="HostRegex"/> — gleiche Regel wie bei den normalen Favoriten.</summary>
     public List<string> IncludeHosts { get; set; } = [];
 
+    /// <summary>
+    /// <see cref="HostRegex"/> gegen den Host-<b>Alias</b> pruefen statt gegen
+    /// den Hostnamen. Default false — bestehende Profile verhalten sich damit
+    /// unveraendert.
+    /// </summary>
+    public bool MatchAlias { get; set; }
+
     /// <summary>Name, unter dem der vorgewaehlte Filter in der ComboBox erscheint.</summary>
     public string FilterName { get; set; } = "Vorgabe";
 
@@ -142,6 +149,7 @@ public sealed class ViewerView
         Name = string.IsNullOrWhiteSpace(FilterName) ? "Vorgabe" : FilterName.Trim(),
         // Leerstring -> null: ein leerer Regex ist kein Filter, sondern „alles".
         HostNameRegex = string.IsNullOrWhiteSpace(HostRegex) ? null : HostRegex.Trim(),
+        Target = MatchAlias ? Models.FilterTarget.Alias : Models.FilterTarget.HostName,
         ExplicitHosts = [.. IncludeHosts.Where(h => !string.IsNullOrWhiteSpace(h))
                                         .Select(h => h.Trim())]
     };

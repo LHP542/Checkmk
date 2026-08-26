@@ -13,6 +13,8 @@ namespace Checkmk.Data;
 /// <param name="Subscribers">Wie viele ihn abonniert haben. Nur für die Anzeige
 /// im Katalog („12 Abonnenten" sagt mehr über einen Filter als jede
 /// Beschreibung).</param>
+/// <param name="MatchTarget">0 = Hostname (Vorgabe), 1 = Host-Alias. Betrifft
+/// nur den Regex — <paramref name="Hosts"/> bleibt eine Liste von Hostnamen.</param>
 public sealed record SharedFilter(
     int HostFilterId,
     int? FachbereichId,
@@ -21,7 +23,8 @@ public sealed record SharedFilter(
     string Name,
     string? HostNameRegex,
     IReadOnlyList<string> Hosts,
-    int Subscribers = 0)
+    int Subscribers = 0,
+    byte MatchTarget = 0)
 {
     public bool IsPublished => FachbereichId is not null;
 
@@ -153,7 +156,8 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
         return [.. rows.Select(f => new SharedFilter(
             f.HostFilterId, f.FachbereichId, f.OwnerUserName, f.Site, f.Name, f.HostNameRegex,
             byFilter.GetValueOrDefault(f.HostFilterId, []),
-            subs.GetValueOrDefault(f.HostFilterId)))];
+            subs.GetValueOrDefault(f.HostFilterId),
+            f.MatchTarget))];
     }
 
     public async Task<IReadOnlyList<int>> LoadSubscriptionsAsync(string user,
@@ -226,6 +230,10 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
         row.Name = filter.Name.Trim();
         row.HostNameRegex = string.IsNullOrWhiteSpace(filter.HostNameRegex)
             ? null : filter.HostNameRegex.Trim();
+        // Unbekannte Werte auf die Vorgabe zurueckholen: die CHECK-Constraint in
+        // der Datenbank laesst nur 0 und 1 zu, und ein INSERT, der daran
+        // scheitert, waere fuer den Anwender ein nichtssagender SQL-Fehler.
+        row.MatchTarget = filter.MatchTarget == 1 ? (byte)1 : (byte)0;
         row.ChangedAtUtc = DateTime.UtcNow;
         row.ChangedBy = changedBy;
 

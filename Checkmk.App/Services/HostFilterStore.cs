@@ -9,6 +9,16 @@ public sealed class HostFilterState
 {
     public List<HostFilter> Filters { get; set; } = new();
     public string? ActiveFilterName { get; set; }
+
+    /// <summary>
+    /// Wurden die beiden Start-Filter für diese Site schon angelegt?
+    ///
+    /// <b>Merken statt am leeren Bestand erkennen.</b> Sonst kämen „Alle Hosts"
+    /// und „Meine Geräte" beim nächsten Start zurück, sobald jemand sie
+    /// weggeräumt hat — und ein Filter, der sich nicht löschen lässt, ist
+    /// ärgerlicher als einer, der fehlt.
+    /// </summary>
+    public bool Seeded { get; set; }
 }
 
 /// <summary>Root-Dokument: pro Site ein eigenes <see cref="HostFilterState"/>.</summary>

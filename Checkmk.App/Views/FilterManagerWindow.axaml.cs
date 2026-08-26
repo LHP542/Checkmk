@@ -38,11 +38,16 @@ public partial class FilterManagerWindow : ChromeWindow
 
         var (catalog, subscribed) = await _filters.LoadCatalogAsync();
 
-        IReadOnlyList<string> hosts = App.Services?.GetService<StatusViewModel>() is { } status
-            ? [.. System.Linq.Enumerable.Distinct(
-                System.Linq.Enumerable.Select(status.AllServices, s => s.HostName),
-                System.StringComparer.OrdinalIgnoreCase)]
-            : [];
+        // Host UND Alias, weil ein Filter wahlweise gegen den einen oder den
+        // anderen laeuft — ohne den Alias zaehlte die Vorschau bei jedem
+        // Alias-Filter stur 0 Treffer.
+        IReadOnlyList<(string Host, string? Alias)> hosts =
+            App.Services?.GetService<StatusViewModel>() is { } status
+                ? [.. System.Linq.Enumerable.Select(
+                    System.Linq.Enumerable.DistinctBy(status.AllServices,
+                        s => s.HostName, System.StringComparer.OrdinalIgnoreCase),
+                    s => (s.HostName, (string?)s.HostAlias))]
+                : [];
 
         var dialog = new FilterCatalogDialog(catalog, subscribed, _filters.UserName, hosts);
         if (await dialog.ShowDialog<IReadOnlyList<int>?>(this) is not { } chosen) return;
