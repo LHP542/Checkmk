@@ -126,7 +126,8 @@ public sealed class CentralFilterService(
 
         try
         {
-            await filters.SetSubscriptionsAsync(userName, filterIds, ct).ConfigureAwait(false);
+            await filters.SetSubscriptionsAsync(_site, userName, filterIds, ct)
+                .ConfigureAwait(false);
             var rows = await filters.LoadAsync(_site, userName, ct).ConfigureAwait(false);
             _loaded = [.. rows.Select(ToModel)];
             WriteCache(_site, _loaded);
@@ -136,6 +137,87 @@ public sealed class CentralFilterService(
         {
             Log.Warn(ex, "Abos konnten nicht gespeichert werden.");
             return $"Speichern fehlgeschlagen: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Bestellt veröffentlichte Filter ab — das ist, was „aus meiner Auswahl
+    /// nehmen" bei einem Katalog-Filter bedeutet, <b>auch beim eigenen</b>.
+    ///
+    /// <para>Die neue Abo-Menge wird aus <c>_loaded</c> abgeleitet, nicht aus
+    /// der Liste in der Oberfläche. Der Grund ist derselbe wie beim Löschen:
+    /// Die Collection ist bei jedem Neuaufbau kurzzeitig unvollständig, und
+    /// „steht nicht mehr drin" darf nie „abbestellen" heißen.</para>
+    /// </summary>
+    public async Task<string?> UnsubscribeAsync(IReadOnlyList<int> filterIds,
+        CancellationToken ct = default)
+    {
+        if (filterIds.Count == 0) return null;
+        if (!CanWrite)
+            return "Die Datenbank ist nicht erreichbar — Abos sind gerade nicht änderbar.";
+
+        try
+        {
+            var wanted = _loaded
+                .Where(f => f.IsPublished && !filterIds.Contains(f.Id))
+                .Select(f => f.Id)
+                .ToList();
+
+            await filters.SetSubscriptionsAsync(_site, userName, wanted, ct)
+                .ConfigureAwait(false);
+
+            _loaded.RemoveAll(f => f.IsPublished && filterIds.Contains(f.Id));
+            WriteCache(_site, _loaded);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Abbestellen fehlgeschlagen.");
+            return $"Abbestellen fehlgeschlagen: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Löscht veröffentlichte Filter endgültig — aus dem Katalog heraus, weil
+    /// sie nach dem Abbestellen in keiner Filterliste mehr stehen.
+    ///
+    /// <para>Der Store weist ab, was noch jemand abonniert hat; das Ergebnis
+    /// steht in der Rückgabe, damit der Dialog es benennen kann statt
+    /// lautlos nichts zu tun.</para>
+    /// </summary>
+    public async Task<string?> DeleteFromCatalogAsync(IReadOnlyList<int> filterIds,
+        CancellationToken ct = default)
+    {
+        if (filterIds.Count == 0) return null;
+        if (!CanWrite)
+            return "Die Datenbank ist nicht erreichbar — Löschen ist gerade nicht möglich.";
+
+        var blocked = new List<string>();
+        try
+        {
+            foreach (var id in filterIds)
+            {
+                var subs = await filters.DeleteAsync(id, ct).ConfigureAwait(false);
+                if (subs > 0)
+                {
+                    var name = _loaded.FirstOrDefault(f => f.Id == id)?.Name ?? $"#{id}";
+                    blocked.Add($"„{name}“ ({subs} Abonnent(en))");
+                }
+                else
+                {
+                    _loaded.RemoveAll(f => f.Id == id);
+                }
+            }
+
+            WriteCache(_site, _loaded);
+            return blocked.Count == 0
+                ? null
+                : "Nicht gelöscht, weil noch abonniert: " + string.Join(", ", blocked);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Filter konnte nicht geloescht werden.");
+            return $"Löschen fehlgeschlagen: {ex.Message}";
         }
     }
 

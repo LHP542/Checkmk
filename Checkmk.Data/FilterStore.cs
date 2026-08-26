@@ -35,12 +35,19 @@ public sealed record SharedFilter(
 public interface IFilterStore
 {
     /// <summary>
-    /// Filter, die dieser Anwender in seiner Auswahl hat: seine eigenen plus
-    /// die <b>abonnierten</b> aus dem Katalog.
+    /// Filter, die dieser Anwender in seiner Auswahl hat: seine eigenen
+    /// <b>persönlichen</b> plus alles <b>Abonnierte</b> aus dem Katalog.
     ///
     /// <b>Nicht</b> automatisch alles Veröffentlichte — das ist der Kern des
     /// Modells. Was im Katalog steht, sieht man im Katalog; im Dropdown landet
     /// nur, was man selbst dazugenommen hat.
+    ///
+    /// <para><b>Das gilt auch für die eigenen.</b> Ein veröffentlichter Filter
+    /// steht nur dann in meiner Auswahl, wenn ich ihn abonniert habe — sonst
+    /// könnte niemand einen Filter für andere pflegen, ohne ihn selbst im
+    /// Dropdown zu haben. Das Abo des Autors legt <see cref="SaveAsync"/> beim
+    /// Veröffentlichen an, damit dabei nichts unter den Händen verschwindet;
+    /// abbestellen kann er es danach wie jeder andere.</para>
     /// </summary>
     Task<IReadOnlyList<SharedFilter>> LoadAsync(string site, string user,
         CancellationToken ct = default);
@@ -52,14 +59,30 @@ public interface IFilterStore
     /// <summary>Ids der Filter, die dieser Anwender abonniert hat.</summary>
     Task<IReadOnlyList<int>> LoadSubscriptionsAsync(string user, CancellationToken ct = default);
 
-    /// <summary>Setzt die Abos eines Anwenders auf genau diese Menge.</summary>
-    Task SetSubscriptionsAsync(string user, IReadOnlyList<int> filterIds,
+    /// <summary>
+    /// Setzt die Abos eines Anwenders <b>innerhalb dieser Site</b> auf genau
+    /// diese Menge. Abos in anderen Sites bleiben unangetastet — der Katalog
+    /// zeigt immer nur eine Site, und ein Abgleich über alle würde beim
+    /// Speichern die Abos der jeweils anderen Site wegräumen.
+    /// </summary>
+    Task SetSubscriptionsAsync(string site, string user, IReadOnlyList<int> filterIds,
         CancellationToken ct = default);
 
     /// <summary>Legt an oder aktualisiert. Gibt die Id zurück.</summary>
     Task<int> SaveAsync(SharedFilter filter, string changedBy, CancellationToken ct = default);
 
-    Task DeleteAsync(int hostFilterId, CancellationToken ct = default);
+    /// <summary>
+    /// Löscht einen Filter endgültig.
+    ///
+    /// <para><b>Nur, wenn ihn niemand mehr abonniert hat.</b> Ein
+    /// veröffentlichter Filter ist geteilte Arbeit; ihn unter Abonnenten
+    /// wegzuziehen wäre dasselbe Ärgernis wie ein Kollege, der eine gemeinsame
+    /// Ansicht löscht. Geprüft wird beim Löschen selbst und nicht nur in der
+    /// Oberfläche — zwischen Anzeige und Klick kann jemand abonniert
+    /// haben.</para>
+    /// </summary>
+    /// <returns>Die Zahl der Abonnenten, wenn nicht gelöscht wurde; sonst 0.</returns>
+    Task<int> DeleteAsync(int hostFilterId, CancellationToken ct = default);
 
     /// <summary>
     /// Übernimmt die persönlichen Filter aus <c>filter.json</c> — <b>genau
@@ -102,10 +125,12 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
 
         var rows = await db.HostFilters.AsNoTracking()
             .Where(f => f.Site == site
-                     && (f.OwnerUserName == user
-                         // Abonniert zaehlt nur, solange der Filter auch
-                         // veroeffentlicht ist — ein zurueckgezogener Filter
-                         // verschwindet aus fremden Auswahlen.
+                     // Persoenlich = nur fuer den Autor.
+                     && ((f.OwnerUserName == user && f.FachbereichId == null)
+                         // Veroeffentlicht = fuer jeden, der abonniert hat —
+                         // den Autor eingeschlossen. Abonniert zaehlt nur,
+                         // solange der Filter auch veroeffentlicht ist; ein
+                         // zurueckgezogener verschwindet aus fremden Auswahlen.
                          || (f.FachbereichId != null && subscribed.Contains(f.HostFilterId))))
             .OrderBy(f => f.Name)
             .ToListAsync(ct).ConfigureAwait(false);
@@ -171,17 +196,26 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
     }
 
     /// <summary>
-    /// Setzt die Abos eines Anwenders. Gediffed, nicht gelöscht-und-neu — sonst
-    /// ginge bei jedem Speichern der Zeitstempel verloren, und ein
-    /// gleichzeitiger Lauf könnte fremde Zeilen treffen.
+    /// Setzt die Abos eines Anwenders in dieser Site. Gediffed, nicht
+    /// gelöscht-und-neu — sonst ginge bei jedem Speichern der Zeitstempel
+    /// verloren, und ein gleichzeitiger Lauf könnte fremde Zeilen treffen.
+    ///
+    /// <para><b>Nur die Abos dieser Site.</b> Der Katalog zeigt immer genau
+    /// eine Site; würde hier über alle abgeglichen, räumte ein Speichern in
+    /// <c>LHP</c> sämtliche Abos in <c>Schul_IT</c> weg.</para>
     /// </summary>
-    public async Task SetSubscriptionsAsync(string user, IReadOnlyList<int> filterIds,
-        CancellationToken ct = default)
+    public async Task SetSubscriptionsAsync(string site, string user,
+        IReadOnlyList<int> filterIds, CancellationToken ct = default)
     {
         await using var db = database.CreateContext();
 
+        var inSite = await db.HostFilters.AsNoTracking()
+            .Where(f => f.Site == site)
+            .Select(f => f.HostFilterId)
+            .ToListAsync(ct).ConfigureAwait(false);
+
         var existing = await db.HostFilterSubscriptions
-            .Where(s => s.UserName == user)
+            .Where(s => s.UserName == user && inSite.Contains(s.HostFilterId))
             .ToListAsync(ct).ConfigureAwait(false);
 
         var wanted = filterIds.Distinct().ToHashSet();
@@ -198,7 +232,7 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
             });
 
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
-        Log.Info("Abos von {User}: {Count} Filter.", user, wanted.Count);
+        Log.Info("Abos von {User} in Site {Site}: {Count} Filter.", user, site, wanted.Count);
     }
 
     public async Task<int> SaveAsync(SharedFilter filter, string changedBy,
@@ -207,6 +241,7 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
         await using var db = database.CreateContext();
 
         HostFilterRow row;
+        int? wasPublishedIn = null;
         if (filter.HostFilterId > 0)
         {
             var found = await db.HostFilters
@@ -216,7 +251,7 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
             // Von jemand anderem geloescht, waehrend der Dialog offen stand:
             // dann neu anlegen statt still nichts zu tun.
             if (found is null) { row = new HostFilterRow(); db.HostFilters.Add(row); }
-            else row = found;
+            else { row = found; wasPublishedIn = found.FachbereichId; }
         }
         else
         {
@@ -241,10 +276,38 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
 
         await ReplaceHostsAsync(db, row.HostFilterId, filter.Hosts, ct).ConfigureAwait(false);
 
+        // Beim Schritt persoenlich -> veroeffentlicht abonniert sich der Autor
+        // selbst. Sonst faellt der Filter im selben Moment aus seiner eigenen
+        // Auswahl, in dem er ihn teilt — er stuende dann nur noch im Katalog,
+        // und das sieht wie ein Datenverlust aus. Abbestellen kann er danach
+        // wie jeder andere; genau das ist der Weg zu „veroeffentlichen, aber
+        // selbst nicht brauchen".
+        if (wasPublishedIn is null && row.FachbereichId is not null)
+            await SubscribeAsync(db, row.HostFilterId, row.OwnerUserName, ct).ConfigureAwait(false);
+
         Log.Info("Filter gespeichert: '{Name}' ({Scope}, Site {Site}, Autor {Owner}).",
             row.Name, row.FachbereichId is null ? "persoenlich" : $"Katalog {row.FachbereichId}",
             row.Site, row.OwnerUserName);
         return row.HostFilterId;
+    }
+
+    private static async Task SubscribeAsync(CockpitDbContext db, int filterId, string user,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(user)) return;
+
+        var already = await db.HostFilterSubscriptions
+            .AnyAsync(s => s.HostFilterId == filterId && s.UserName == user, ct)
+            .ConfigureAwait(false);
+        if (already) return;
+
+        db.HostFilterSubscriptions.Add(new HostFilterSubscription
+        {
+            HostFilterId = filterId,
+            UserName = user,
+            SubscribedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -278,15 +341,31 @@ public sealed class FilterStore(CockpitDatabase database) : IFilterStore
     /// nach dem Cascade keine Zeile mehr treffen, und das als
     /// Nebenläufigkeitskonflikt melden.
     /// </summary>
-    public async Task DeleteAsync(int hostFilterId, CancellationToken ct = default)
+    public async Task<int> DeleteAsync(int hostFilterId, CancellationToken ct = default)
     {
         await using var db = database.CreateContext();
 
         if (await db.HostFilters.FirstOrDefaultAsync(f => f.HostFilterId == hostFilterId, ct)
-                .ConfigureAwait(false) is not { } row) return;
+                .ConfigureAwait(false) is not { } row) return 0;
+
+        // Ein veroeffentlichter Filter mit Abonnenten wird nicht geloescht.
+        // Die Pruefung sitzt hier und nicht nur im Dialog: zwischen Anzeige und
+        // Klick kann jemand abonniert haben, und dann waere seine Auswahl
+        // stillschweigend um einen Eintrag aermer.
+        if (row.FachbereichId is not null)
+        {
+            var subs = await db.HostFilterSubscriptions
+                .CountAsync(s => s.HostFilterId == hostFilterId, ct).ConfigureAwait(false);
+            if (subs > 0)
+            {
+                Log.Info("Filter '{Name}' nicht geloescht — {Count} Abonnent(en).", row.Name, subs);
+                return subs;
+            }
+        }
 
         db.HostFilters.Remove(row);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return 0;
     }
 
     public async Task<int> ImportLegacyIfEmptyAsync(string site, string user,

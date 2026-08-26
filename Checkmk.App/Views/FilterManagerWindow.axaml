@@ -43,8 +43,11 @@
                      ItemSpacing="6" LineSpacing="6">
             <Button Content="Neu" Command="{Binding NewCommand}"
                     IsEnabled="{Binding CanEdit}" />
-            <Button Content="Löschen" Command="{Binding DeleteCommand}"
-                    IsEnabled="{Binding CanDeleteSelected}" />
+            <!-- Beschriftung wechselt: bei einem Katalog-Filter nimmt der Knopf
+                 ihn nur aus meiner Auswahl, gelöscht wird da nichts. -->
+            <Button Content="{Binding RemoveLabel}" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding CanDeleteSelected}"
+                    ToolTip.Tip="{Binding RemoveTip}" />
             <Button Content="Katalog…" Click="OnCatalogClick"
                     IsVisible="{Binding IsCentral}"
                     ToolTip.Tip="Filter der Fachbereiche durchsehen und abonnieren." />

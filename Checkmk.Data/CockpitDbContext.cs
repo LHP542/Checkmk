@@ -17,8 +17,8 @@ public sealed class CockpitDbContext(DbContextOptions<CockpitDbContext> options)
     : DbContext(options)
 {
     /// <summary>Schema-Stand, den dieser Programmstand erwartet. Muss zu den
-    /// Skripten in <c>db/</c> passen (aktuell 008-filter-target.sql).</summary>
-    public const int ExpectedSchemaVersion = 8;
+    /// Skripten in <c>db/</c> passen (aktuell 009-filter-selfsubscribe.sql).</summary>
+    public const int ExpectedSchemaVersion = 9;
 
     public DbSet<SchemaVersionRow> SchemaVersion => Set<SchemaVersionRow>();
     public DbSet<GlobalSetting> GlobalSettings => Set<GlobalSetting>();

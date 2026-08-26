@@ -44,6 +44,7 @@ nicht. Reihenfolge:
 006-area-hosttag.sql      Checkmk-Ortstag je Bereich (der bessere Weg zu 005)
 007-fachbereich-katalog.sql  Filter-Katalog je Fachbereich mit Abo (loest Teams ab)
 008-filter-target.sql        Filter matcht wahlweise auf den Host-Alias statt den Hostnamen
+009-filter-selfsubscribe.sql Autoren abonnieren ihre eigenen veroeffentlichten Filter
 ```
 
 Optional, kein Schema-Eingriff und ohne Versionssprung:

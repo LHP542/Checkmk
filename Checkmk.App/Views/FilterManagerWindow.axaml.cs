@@ -49,10 +49,11 @@ public partial class FilterManagerWindow : ChromeWindow
                     s => (s.HostName, (string?)s.HostAlias))]
                 : [];
 
-        var dialog = new FilterCatalogDialog(catalog, subscribed, _filters.UserName, hosts);
-        if (await dialog.ShowDialog<IReadOnlyList<int>?>(this) is not { } chosen) return;
+        var dialog = new FilterCatalogDialog(catalog, subscribed, _filters.UserName, hosts,
+            _filters.IsAdmin);
+        if (await dialog.ShowDialog<CatalogResult?>(this) is not { } result) return;
 
-        await vm.ApplySubscriptionsAsync(chosen);
+        await vm.ApplySubscriptionsAsync(result.Subscribed, result.Deleted);
     }
 
     private async void OnManageFachbereicheClick(object? sender, RoutedEventArgs e)

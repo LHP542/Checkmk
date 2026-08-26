@@ -65,12 +65,19 @@ public sealed class HostFilterCollection : ObservableObject
     /// Bewusst ein eigener Weg neben <see cref="Persist"/>: Ein Abo ist keine
     /// Änderung am Filter, sondern an meiner Sicht darauf.
     /// </summary>
-    public async Task SubscribeAsync(IReadOnlyList<int> filterIds)
+    public async Task SubscribeAsync(IReadOnlyList<int> filterIds,
+        IReadOnlyList<int>? deleteFromCatalog = null)
     {
         if (_central is null) return;
 
         LastError = await _central.SetSubscriptionsAsync(filterIds).ConfigureAwait(true);
         if (LastError is not null) return;
+
+        // Erst die Abos setzen, dann loeschen: Der Store weist ab, was noch
+        // jemand abonniert hat — und das eigene Abo ist bis eben eines davon.
+        if (deleteFromCatalog is { Count: > 0 })
+            LastError = await _central.DeleteFromCatalogAsync(deleteFromCatalog)
+                .ConfigureAwait(true);
 
         var activeName = _active?.Name;
         _suppressPersist = true;
@@ -300,9 +307,24 @@ public sealed class HostFilterCollection : ObservableObject
     /// </summary>
     private readonly List<int> _deleted = [];
 
+    /// <summary>
+    /// Nimmt einen Filter aus meiner Auswahl.
+    ///
+    /// <para><b>Was das heißt, hängt davon ab, ob er veröffentlicht ist.</b>
+    /// Ein persönlicher Filter wird gelöscht. Ein veröffentlichter wird nur
+    /// <i>abbestellt</i> — auch mein eigener. Vorher riss „Löschen" den Filter
+    /// aus dem Katalog und damit aus den Auswahlen aller anderen; wer einen
+    /// Filter für den Fachbereich baute, den er selbst nicht braucht, hatte
+    /// keinen Weg, ihn aus der eigenen Liste zu bekommen. Endgültig gelöscht
+    /// wird ein Katalog-Filter im Katalog, und nur wenn ihn niemand mehr
+    /// abonniert hat.</para>
+    /// </summary>
     public void Remove(HostFilter f)
     {
-        if (f.Id > 0) _deleted.Add(f.Id);
+        if (f.IsPublished && f.Id > 0)
+            _unsubscribed.Add(f.Id);
+        else if (f.Id > 0)
+            _deleted.Add(f.Id);
 
         Filters.Remove(f);
         if (ReferenceEquals(_active, f))
@@ -310,6 +332,10 @@ public sealed class HostFilterCollection : ObservableObject
         else
             Persist();
     }
+
+    /// <summary>Ids, die ausdrücklich <b>abbestellt</b> werden sollen. Eigene
+    /// Liste aus demselben Grund wie <see cref="_deleted"/>.</summary>
+    private readonly List<int> _unsubscribed = [];
 
     /// <summary>Nach externer Bearbeitung eines Filters aufrufen, um den Store zu aktualisieren.</summary>
     public void Update() => Persist();
@@ -376,7 +402,9 @@ public sealed class HostFilterCollection : ObservableObject
 
         var deleted = _deleted.ToList();
         _deleted.Clear();
-        QueuePersist(state.Filters, deleted);
+        var unsubscribed = _unsubscribed.ToList();
+        _unsubscribed.Clear();
+        QueuePersist(state.Filters, deleted, unsubscribed);
     }
 
     /// <summary>
@@ -388,13 +416,19 @@ public sealed class HostFilterCollection : ObservableObject
     /// </summary>
     private Task _persistChain = Task.CompletedTask;
 
-    private void QueuePersist(List<HostFilter> current, IReadOnlyList<int> deleted)
+    private void QueuePersist(List<HostFilter> current, IReadOnlyList<int> deleted,
+        IReadOnlyList<int> unsubscribed)
     {
         if (_central is null) return;
 
         _persistChain = _persistChain.ContinueWith(async _ =>
         {
-            LastError = await _central.PersistAsync(current, deleted).ConfigureAwait(true);
+            // Erst abbestellen, dann schreiben: Ein abbestellter Filter gehoert
+            // nicht mehr in meine Auswahl, soll aber unveraendert im Katalog
+            // stehenbleiben.
+            var unsubError = await _central.UnsubscribeAsync(unsubscribed).ConfigureAwait(true);
+            LastError = await _central.PersistAsync(current, deleted).ConfigureAwait(true)
+                        ?? unsubError;
             OnPropertyChanged(nameof(CanEdit));
             OnPropertyChanged(nameof(StatusHint));
         }, TaskScheduler.FromCurrentSynchronizationContext()).Unwrap();

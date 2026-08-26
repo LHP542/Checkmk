@@ -708,7 +708,7 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   | Pflegeaufwand | Mitgliederlisten | keiner |
   | Fachbereich ist… | Zugriffsgrenze | **Ordnungsbegriff** |
 
-  Sechs Punkte, die nicht wegvereinfacht werden dürfen:
+  Neun Punkte, die nicht wegvereinfacht werden dürfen:
   1. **Ein veröffentlichter Filter behält seinen Autor.** `OwnerUserName` ist
      *immer* gesetzt, auch im Katalog; `FachbereichId` sagt nur, ob und wo er
      veröffentlicht ist. Beim Team-Modell schlossen sich beide aus — ein
@@ -739,6 +739,35 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   6. **Veröffentlichen darf jeder**, Fachbereiche verwalten die Admins
      (`AppAdmin`; leere Tabelle = jeder). Der Katalog ist Organisation, kein
      Zugriffsschutz — die echte Grenze bleibt die Checkmk-Rolle.
+  7. **Das Abo entscheidet auch beim eigenen Filter** (Schema 9). Bis dahin sah
+     ein Autor seine veröffentlichten Filter *immer*; damit konnte niemand
+     einen Filter für den Fachbereich pflegen, den er selbst nicht braucht, und
+     „Löschen" war der einzige Weg aus der eigenen Liste — der riss ihn aus dem
+     Katalog und damit aus den Auswahlen aller anderen. `FilterStore.LoadAsync`
+     liefert eigene Filter deshalb nur noch, solange sie **persönlich** sind;
+     veröffentlichte brauchen ein Abo wie jedes andere. Zwei Sicherungen daran:
+     - **Veröffentlichen abonniert den Autor** (`SaveAsync`, nur beim Übergang
+       persönlich → Katalog). Sonst fiele der Filter in demselben Moment aus
+       seiner Auswahl, in dem er ihn teilt — das sieht wie Datenverlust aus.
+     - **`009-filter-selfsubscribe.sql` trägt die Abos für den Bestand nach.**
+       Ohne das Skript verlören alle Autoren ihre Katalog-Filter aus der
+       Auswahl. Deshalb ist es trotz reinem `INSERT` ein Versionssprung.
+  8. **Endgültig gelöscht wird ein Katalog-Filter im Katalog, und nur bei null
+     Abonnenten.** „Löschen" im Filter-Manager entfernt einen veröffentlichten
+     Filter nicht mehr, es bestellt ihn ab; der Knopf heißt dort dann auch
+     „Aus meiner Auswahl". Eine Beschriftung, die etwas anderes verspricht als
+     sie tut, ist schlimmer als ein zweiter Knopf. Drei Punkte:
+     - **Der Katalog ist die einzig mögliche Stelle.** Wer abbestellt hat, hat
+       den Filter in keiner Liste mehr — nur dort.
+     - **Die Wache sitzt im Store** (`FilterStore.DeleteAsync` gibt die
+       Abonnentenzahl zurück, statt zu löschen), nicht nur im Dialog: zwischen
+       Anzeige und Klick kann jemand abonniert haben.
+     - **Der Dialog rechnet die eigene, noch nicht gespeicherte Entscheidung
+       mit ein** (`EffectiveSubscribers`). Sonst müsste man übernehmen,
+       schließen und neu öffnen, nur damit „Löschen" angeht.
+  9. **`SetSubscriptionsAsync` gleicht nur die Abos *einer Site* ab.** Der
+     Katalog zeigt immer genau eine; ein Abgleich über alle räumte beim
+     Speichern in `LHP` sämtliche Abos in `Schul_IT` weg.
 
   **Es gibt bewusst keine „wer nichts abonniert, sieht alles"-Regel** (anders
   als beim Bereichsbaum). Dort ist die Alternative eine leere Karte; hier hat

@@ -33,8 +33,15 @@ public class FilterPersistTests
             CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<int>>([]);
 
-        public Task SetSubscriptionsAsync(string user, IReadOnlyList<int> filterIds,
-            CancellationToken ct = default) => Task.CompletedTask;
+        /// <summary>Die zuletzt gesetzte Abo-Menge — fuer den Abbestell-Weg.</summary>
+        public List<int>? Subscriptions { get; private set; }
+
+        public Task SetSubscriptionsAsync(string site, string user, IReadOnlyList<int> filterIds,
+            CancellationToken ct = default)
+        {
+            Subscriptions = [.. filterIds];
+            return Task.CompletedTask;
+        }
 
         public Task<int> SaveAsync(SharedFilter filter, string changedBy,
             CancellationToken ct = default)
@@ -43,10 +50,15 @@ public class FilterPersistTests
             return Task.FromResult(filter.HostFilterId > 0 ? filter.HostFilterId : 99);
         }
 
-        public Task DeleteAsync(int id, CancellationToken ct = default)
+        /// <summary>Abonnentenzahl, die <see cref="DeleteAsync"/> melden soll —
+        /// damit sich die Wache „nicht loeschen, solange abonniert" pruefen laesst.</summary>
+        public int SubscribersOnDelete { get; set; }
+
+        public Task<int> DeleteAsync(int id, CancellationToken ct = default)
         {
+            if (SubscribersOnDelete > 0) return Task.FromResult(SubscribersOnDelete);
             Deleted.Add(id);
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
 
         public Task<int> ImportLegacyIfEmptyAsync(string site, string user,
@@ -187,6 +199,77 @@ public class FilterPersistTests
             deleted: null, TestContext.Current.CancellationToken);
 
         store2.Saved.Should().ContainSingle(s => s.HostNameRegex == "^db");
+    }
+
+    // --- Katalog-Filter: abbestellen statt loeschen ----------------------
+
+    /// <summary>
+    /// Ein veroeffentlichter Filter gehoert nicht mehr nur mir. Ihn aus meiner
+    /// Auswahl zu nehmen darf ihn nicht aus dem Katalog reissen — auch dann
+    /// nicht, wenn ich selbst der Autor bin.
+    /// </summary>
+    [Fact]
+    public async Task Abbestellen_loescht_den_eigenen_Katalog_Filter_nicht()
+    {
+        var (svc, store) = Build(Row(9, "Datenbanken"), Row(11, "CTX", fachbereich: 1));
+        await svc.LoadAsync("LHP", [], TestContext.Current.CancellationToken);
+
+        var err = await svc.UnsubscribeAsync([11], TestContext.Current.CancellationToken);
+
+        err.Should().BeNull();
+        store.Deleted.Should().BeEmpty();
+        store.Subscriptions.Should().BeEmpty("der einzige abonnierte Katalog-Filter war CTX");
+        svc.Current.Should().ContainSingle().Which.Name.Should().Be("Datenbanken");
+    }
+
+    /// <summary>
+    /// Die neue Abo-Menge entsteht aus dem geladenen Stand, nicht aus der
+    /// Liste in der Oberflaeche — sonst wuerde eine kurzzeitig unvollstaendige
+    /// Collection fremde Abos wegraeumen. Derselbe Grund wie beim Loeschen.
+    /// </summary>
+    [Fact]
+    public async Task Abbestellen_laesst_die_uebrigen_Abos_stehen()
+    {
+        var (svc, store) = Build(
+            Row(11, "CTX", fachbereich: 1),
+            Row(12, "Backup", fachbereich: 1),
+            new SharedFilter(13, 1, "GuentherJ", "LHP", "Netzwerk", ".*", []));
+        await svc.LoadAsync("LHP", [], TestContext.Current.CancellationToken);
+
+        await svc.UnsubscribeAsync([11], TestContext.Current.CancellationToken);
+
+        store.Subscriptions.Should().BeEquivalentTo([12, 13]);
+    }
+
+    [Fact]
+    public async Task Ein_Katalog_Filter_ohne_Abonnenten_wird_geloescht()
+    {
+        var (svc, store) = Build(Row(11, "CTX", fachbereich: 1));
+        await svc.LoadAsync("LHP", [], TestContext.Current.CancellationToken);
+
+        var err = await svc.DeleteFromCatalogAsync([11], TestContext.Current.CancellationToken);
+
+        err.Should().BeNull();
+        store.Deleted.Should().BeEquivalentTo([11]);
+    }
+
+    /// <summary>
+    /// Zwischen Anzeige und Klick kann jemand abonniert haben. Dann sagt der
+    /// Store nein, und das muss beim Anwender ankommen statt lautlos zu
+    /// verpuffen.
+    /// </summary>
+    [Fact]
+    public async Task Ein_abonnierter_Katalog_Filter_wird_nicht_geloescht()
+    {
+        var (svc, store) = Build(Row(11, "CTX", fachbereich: 1));
+        await svc.LoadAsync("LHP", [], TestContext.Current.CancellationToken);
+        store.SubscribersOnDelete = 3;
+
+        var err = await svc.DeleteFromCatalogAsync([11], TestContext.Current.CancellationToken);
+
+        err.Should().Contain("CTX").And.Contain("3");
+        store.Deleted.Should().BeEmpty();
+        svc.Current.Should().ContainSingle(f => f.Name == "CTX");
     }
 
     [Fact]

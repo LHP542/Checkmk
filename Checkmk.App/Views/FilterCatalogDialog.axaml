@@ -29,9 +29,9 @@
       <ListBox Grid.Row="3" Name="CatalogList" Margin="16,0,16,0">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="views:CatalogEntry">
-            <Grid ColumnDefinitions="Auto,*" Margin="0,3" ColumnSpacing="10">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,3" ColumnSpacing="10">
               <CheckBox Grid.Column="0" IsChecked="{Binding IsSubscribed, Mode=TwoWay}"
-                        IsEnabled="{Binding CanUnsubscribe}"
+                        IsEnabled="{Binding IsAlive}"
                         VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="2">
                 <Grid ColumnDefinitions="*,Auto">
@@ -45,6 +45,15 @@
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{Binding Matches}" FontSize="11" Foreground="#66BB6A" />
               </StackPanel>
+
+              <!-- Löschen sitzt hier und nicht im Filter-Manager: Wer einen
+                   Katalog-Filter abbestellt hat, findet ihn dort gar nicht
+                   mehr. Angeboten wird es nur dem Autor (bzw. einem Admin) und
+                   nur bei null Abonnenten — ausgeführt beim „Übernehmen". -->
+              <Button Grid.Column="2" Content="Löschen" Click="OnDeleteClick"
+                      VerticalAlignment="Center" FontSize="11" Padding="8,3"
+                      IsVisible="{Binding CanDelete}" IsEnabled="{Binding IsAlive}"
+                      ToolTip.Tip="Endgültig aus dem Katalog entfernen. Möglich, weil ihn niemand mehr abonniert hat." />
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>

@@ -27,6 +27,8 @@ public sealed partial class FilterManagerViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEditSelected))]
     [NotifyPropertyChangedFor(nameof(CanDeleteSelected))]
+    [NotifyPropertyChangedFor(nameof(RemoveLabel))]
+    [NotifyPropertyChangedFor(nameof(RemoveTip))]
     [NotifyPropertyChangedFor(nameof(SelectionHint))]
     private HostFilter? _selected;
 
@@ -77,8 +79,29 @@ public sealed partial class FilterManagerViewModel : ObservableObject
     public bool CanEditSelected
         => CanEdit && Selected is { } s && s.IsAuthor(_collection.UserName);
 
-    /// <summary>Transiente Vorgabe-Filter gehören dem Profil und lassen sich nicht löschen.</summary>
-    public bool CanDeleteSelected => CanEditSelected && Selected is { IsTransient: false };
+    /// <summary>
+    /// Aus der Liste nehmen darf man auch einen fremden Filter — das ist dann
+    /// ein Abbestellen, keine Änderung an fremder Arbeit. Nur transiente
+    /// Vorgabe-Filter aus <c>viewer.json</c> gehören dem Profil.
+    /// </summary>
+    public bool CanDeleteSelected => CanEdit && Selected is { IsTransient: false } s
+        && (s.IsPublished || s.IsAuthor(_collection.UserName));
+
+    /// <summary>
+    /// <b>„Löschen" darf nicht draufstehen, wenn nichts gelöscht wird.</b> Bei
+    /// einem veröffentlichten Filter nimmt der Knopf ihn nur aus meiner
+    /// Auswahl; der Katalog-Eintrag bleibt. Endgültig gelöscht wird er im
+    /// Katalog, und nur ohne Abonnenten.
+    /// </summary>
+    public string RemoveLabel => Selected is { IsPublished: true }
+        ? "Aus meiner Auswahl"
+        : "Löschen";
+
+    public string RemoveTip => Selected is { IsPublished: true } s
+        ? $"„{s.Name}“ bleibt im Katalog von „{s.FachbereichName}“ — du siehst ihn nur "
+          + "nicht mehr in deiner Auswahl. Endgültig löschen geht im Katalog, "
+          + "sobald ihn niemand mehr abonniert hat."
+        : "Diesen persönlichen Filter endgültig löschen.";
 
     /// <summary>Hinweis unter der Liste, wenn ein fremder Filter markiert ist.</summary>
     public string SelectionHint => Selected switch
@@ -89,7 +112,7 @@ public sealed partial class FilterManagerViewModel : ObservableObject
              + "Zum Abbestellen: Katalog…",
         { IsPublished: true } s
             => $"Veröffentlicht in „{s.FachbereichName}“ — {s.Subscribers} Abonnent(en). "
-             + "Änderungen sehen alle.",
+             + "Änderungen sehen alle. Aus deiner Auswahl nehmen löscht ihn nicht.",
         _ => ""
     };
 
@@ -230,9 +253,10 @@ public sealed partial class FilterManagerViewModel : ObservableObject
     /// <summary>
     /// Übernimmt eine geänderte Abo-Auswahl aus dem Katalog-Dialog.
     /// </summary>
-    public async Task ApplySubscriptionsAsync(IReadOnlyList<int> filterIds)
+    public async Task ApplySubscriptionsAsync(IReadOnlyList<int> filterIds,
+        IReadOnlyList<int>? deleteFromCatalog = null)
     {
-        await _collection.SubscribeAsync(filterIds);
+        await _collection.SubscribeAsync(filterIds, deleteFromCatalog);
         Selected = Filters.FirstOrDefault();
         UpdateStatus();
     }

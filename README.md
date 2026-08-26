@@ -392,8 +392,27 @@ veröffentlicht haben — mit Autor, Abonnentenzahl und, was am meisten hilft,
 Filter erscheint in deiner Auswahl.
 
 > Ein Filter kommt **nicht** von allein in dein Dropdown, nur weil ihn jemand
-> veröffentlicht hat. Du entscheidest, was du siehst. Deine eigenen Filter sind
-> immer dabei und lassen sich nicht abbestellen.
+> veröffentlicht hat. Du entscheidest, was du siehst.
+
+**Auch deine eigenen kannst du abbestellen.** Wenn du einen Filter für den
+Fachbereich baust, den du selbst nicht brauchst: veröffentlichen, dann im
+Katalog das Häkchen wegnehmen (oder im Filter-Manager auf **„Aus meiner
+Auswahl"**). Er bleibt im Katalog stehen, nur eben nicht in deinem Dropdown.
+
+> Um ihn später zu bearbeiten, abonnierst du ihn kurz wieder — ändern kann man
+> nur, was in der eigenen Liste steht.
+
+**„Aus meiner Auswahl" löscht nichts.** Bei einem veröffentlichten Filter heißt
+der Knopf im Filter-Manager genau so, und er tut auch genau das: Der
+Katalog-Eintrag bleibt, alle anderen Abonnenten behalten ihn. Bei einem
+persönlichen Filter heißt der Knopf weiter **„Löschen"** und löscht.
+
+**Endgültig löschen** geht im Katalog — ein **„Löschen"** an der Zeile, den nur
+der Autor (und ein Admin) sieht, und auch nur, **wenn ihn niemand mehr
+abonniert hat**, dich eingerechnet. Ein veröffentlichter Filter ist geteilte
+Arbeit; ihn unter Abonnenten wegzuziehen wäre so ärgerlich wie ein gelöschter
+gemeinsamer Ordner. Der Eintrag wird zunächst nur vorgemerkt („wird gelöscht")
+— erst **„Übernehmen"** führt es aus, **„Abbrechen"** nimmt es zurück.
 
 **Ändern darf nur der Autor.** Ein abonnierter Filter steht bei dir in der
 Liste, die Felder sind aber gesperrt — sonst würde deine Korrektur ungefragt
