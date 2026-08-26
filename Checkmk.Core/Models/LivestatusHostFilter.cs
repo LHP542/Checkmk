@@ -35,13 +35,22 @@ public sealed record LivestatusHostFilter
     /// Rueckgabe: JSON-Ausdruck als Object-Baum, den <see cref="ToJson"/>
     /// serialisiert.
     /// </summary>
-    public object? ToQueryObject()
+    /// <param name="hostTable">
+    /// <b>Die Spalten heissen je Tabelle anders.</b> Auf dem host-Endpunkt sind
+    /// es <c>name</c> und <c>alias</c>, auf dem service-Endpunkt
+    /// <c>host_name</c> und <c>host_alias</c>. Wer das verwechselt, bekommt von
+    /// Checkmk ein nichtssagendes <c>400 „These fields have problems: query"</c>
+    /// — nicht etwa null Treffer, sondern einen Fehlschlag des ganzen Refreshs.
+    /// </param>
+    public object? ToQueryObject(bool hostTable = false)
     {
+        var nameCol = hostTable ? "name" : "host_name";
+
         if (IncludeHosts is { Count: > 0 } list)
         {
             // Mehrere exakte Matches -> OR-Verkettung.
             if (list.Count == 1)
-                return new { op = "=", left = "host_name", right = list[0] };
+                return new { op = "=", left = nameCol, right = list[0] };
 
             return new
             {
@@ -49,7 +58,7 @@ public sealed record LivestatusHostFilter
                 expr = list.Select(h => new
                 {
                     op = "=",
-                    left = "host_name",
+                    left = nameCol,
                     right = h
                 }).ToArray()
             };
@@ -58,19 +67,20 @@ public sealed record LivestatusHostFilter
         if (!string.IsNullOrWhiteSpace(HostNameRegex))
         {
             // Livestatus: "~~" == Regex, case-insensitive.
-            return new { op = "~~", left = "host_name", right = HostNameRegex };
+            return new { op = "~~", left = nameCol, right = HostNameRegex };
         }
 
         if (!string.IsNullOrWhiteSpace(HostAliasRegex))
-            return new { op = "~~", left = "host_alias", right = HostAliasRegex };
+            return new { op = "~~", left = hostTable ? "alias" : "host_alias", right = HostAliasRegex };
 
         return null;
     }
 
     /// <summary>JSON-Repraesentation des Query-Ausdrucks (oder null wenn leer).</summary>
-    public string? ToJson()
+    /// <param name="hostTable">siehe <see cref="ToQueryObject"/>.</param>
+    public string? ToJson(bool hostTable = false)
     {
-        var q = ToQueryObject();
+        var q = ToQueryObject(hostTable);
         return q is null ? null : JsonSerializer.Serialize(q);
     }
 }

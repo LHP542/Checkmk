@@ -102,6 +102,40 @@ public class FilterAliasTests
         q.ToJson().Should().Contain("host_name");
     }
 
+    /// <summary>
+    /// <b>Die Spalten heissen je Tabelle anders.</b> Auf dem host-Endpunkt
+    /// <c>name</c>/<c>alias</c>, auf dem service-Endpunkt
+    /// <c>host_name</c>/<c>host_alias</c>.
+    ///
+    /// Real passiert am 2026-08-26: Der Client ersetzte im fertigen JSON
+    /// <c>"host_name"</c> durch <c>"name"</c> — den Alias-Filter traf das nicht,
+    /// und Checkmk quittierte jeden Refresh mit
+    /// <c>400 „These fields have problems: query"</c>. Kein leeres Ergebnis,
+    /// sondern ein Fehlschlag des kompletten Abrufs.
+    /// </summary>
+    [Fact]
+    public void The_host_endpoint_uses_the_short_column_names()
+    {
+        new LivestatusHostFilter { HostAliasRegex = "OsteL" }.ToJson(hostTable: true)
+            .Should().Contain("\"alias\"").And.NotContain("host_alias");
+
+        new LivestatusHostFilter { HostNameRegex = "^db" }.ToJson(hostTable: true)
+            .Should().Contain("\"name\"").And.NotContain("host_name");
+
+        new LivestatusHostFilter { IncludeHosts = ["DBSQL01", "CTX07"] }.ToJson(hostTable: true)
+            .Should().Contain("\"name\"").And.NotContain("host_name");
+    }
+
+    [Fact]
+    public void The_service_endpoint_keeps_the_prefixed_column_names()
+    {
+        new LivestatusHostFilter { HostAliasRegex = "OsteL" }.ToJson()
+            .Should().Contain("host_alias");
+
+        new LivestatusHostFilter { IncludeHosts = ["DBSQL01"] }.ToJson()
+            .Should().Contain("host_name");
+    }
+
     [Fact]
     public void An_alias_only_filter_is_not_empty()
         => new LivestatusHostFilter { HostAliasRegex = "OsteL" }.IsEmpty.Should().BeFalse();

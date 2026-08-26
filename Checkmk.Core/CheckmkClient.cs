@@ -96,14 +96,14 @@ public sealed class CheckmkClient
         var cols = new[] { "name", "state", "plugin_output", "acknowledged", "scheduled_downtime_depth" };
         var url = "domain-types/host/collections/all?" + ColumnsQuery(cols, hostNameCol: "name");
 
-        if (filter?.ToJson() is { } queryJson)
-        {
-            // Livestatus-Query auf host-Endpunkt: das Feld heisst hier "name", nicht "host_name".
-            // Wir bauen deshalb eine zweite JSON-Struktur, die "left":"host_name" durch
-            // "left":"name" ersetzt — ohne den User-Filter nachbauen zu muessen.
-            queryJson = queryJson.Replace("\"host_name\"", "\"name\"");
+        // Livestatus-Query auf dem host-Endpunkt: die Spalten heissen hier
+        // "name" und "alias", nicht "host_name"/"host_alias". Frueher stand
+        // hier ein string.Replace auf dem fertigen JSON — das traf den
+        // Alias-Filter nicht und quittierte jeden Refresh mit
+        // „400 These fields have problems: query". Die Namen entstehen deshalb
+        // jetzt an der Quelle.
+        if (filter?.ToJson(hostTable: true) is { } queryJson)
             url += "&query=" + Uri.EscapeDataString(queryJson);
-        }
 
         var result = await GetAsync<CheckmkCollection<HostStatusEnvelope>>(url, ct, progress)
             .ConfigureAwait(false);
