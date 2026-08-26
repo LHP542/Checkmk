@@ -6,8 +6,9 @@ using Xunit;
 namespace Checkmk.Core.Tests;
 
 /// <summary>
-/// Auf einem frischen Rechner stehen zwei Filter schon da: „Alle Hosts" und
-/// „Meine Geräte" (Anmeldename gegen den Host-Alias), letzterer aktiv.
+/// Auf einem frischen Rechner stehen zwei Filter schon da: „Alle" und einer,
+/// der wie der Anmeldename heisst („OsteL", „PeaterC") und gegen den
+/// Host-Alias geht — letzterer aktiv.
 ///
 /// Der Grund ist der Erstkontakt: Wer das Cockpit zum ersten Mal startet, sieht
 /// sonst alle Checks der Stadt und muss sich erst einen Filter bauen, um seine
@@ -47,7 +48,7 @@ public class FilterSeedTests
 
         collection.Filters.Select(f => f.Name).Should().Equal(
             HostFilterCollection.AllHostsFilterName,
-            HostFilterCollection.MyDevicesFilterName);
+            HostFilterCollection.MyDevicesFilterNameFor(Environment.UserName));
     }
 
     [Fact]
@@ -56,13 +57,28 @@ public class FilterSeedTests
         var collection = Build(new FakeStore());
 
         var mine = collection.Active!;
-        mine.Name.Should().Be(HostFilterCollection.MyDevicesFilterName);
+        mine.Name.Should().Be(HostFilterCollection.MyDevicesFilterNameFor(Environment.UserName));
         mine.Target.Should().Be(FilterTarget.Alias);
         mine.Matches("PC-4711", $"SchmidtT; {Environment.UserName}").Should().BeTrue();
         mine.Matches("PC-4712", "SchmidtT").Should().BeFalse();
     }
 
-    /// <summary>„Alle Hosts" ist wirklich alles — kein Regex, keine Liste, und
+    /// <summary>
+    /// Der persoenliche Filter heisst wie der Anmeldename — bei OsteL „OsteL",
+    /// bei PeaterC „PeaterC". Derselbe Text steht im Regex und im Alias der
+    /// Geraete; wer ihn im Dropdown sieht, muss nicht raten, wonach gefiltert
+    /// wird.
+    /// </summary>
+    [Fact]
+    public void The_personal_filter_is_named_after_the_login()
+    {
+        var mine = Build(new FakeStore()).Active!;
+
+        mine.Name.Should().Be(Environment.UserName);
+        mine.HostNameRegex.Should().Contain(Environment.UserName);
+    }
+
+    /// <summary>„Alle" ist wirklich alles — kein Regex, keine Liste, und
     /// serverseitig ungefiltert.</summary>
     [Fact]
     public void The_all_hosts_filter_filters_nothing()

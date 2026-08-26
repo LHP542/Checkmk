@@ -13,10 +13,10 @@ public sealed class HostFilterState
     /// <summary>
     /// Wurden die beiden Start-Filter für diese Site schon angelegt?
     ///
-    /// <b>Merken statt am leeren Bestand erkennen.</b> Sonst kämen „Alle Hosts"
-    /// und „Meine Geräte" beim nächsten Start zurück, sobald jemand sie
-    /// weggeräumt hat — und ein Filter, der sich nicht löschen lässt, ist
-    /// ärgerlicher als einer, der fehlt.
+    /// <b>Merken statt am leeren Bestand erkennen.</b> Sonst kämen „Alle" und
+    /// der Filter auf den eigenen Anmeldenamen beim nächsten Start zurück,
+    /// sobald jemand sie weggeräumt hat — und ein Filter, der sich nicht
+    /// löschen lässt, ist ärgerlicher als einer, der fehlt.
     /// </summary>
     public bool Seeded { get; set; }
 }

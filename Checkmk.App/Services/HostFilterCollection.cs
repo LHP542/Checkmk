@@ -159,14 +159,22 @@ public sealed class HostFilterCollection : ObservableObject
     }
 
     /// <summary>Name des Filters, der alle Hosts zeigt.</summary>
-    public const string AllHostsFilterName = "Alle Hosts";
-
-    /// <summary>Name des Filters auf den eigenen Anmeldenamen im Host-Alias.</summary>
-    public const string MyDevicesFilterName = "Meine Geräte";
+    public const string AllHostsFilterName = "Alle";
 
     /// <summary>
-    /// Legt auf einem frischen Rechner zwei Filter an: „Alle Hosts" und
-    /// „Meine Geräte" (Anmeldename gegen den Host-Alias), und stellt den
+    /// Der persönliche Start-Filter heißt wie der Anmeldename — bei OsteL
+    /// „OsteL", bei PeaterC „PeaterC".
+    ///
+    /// <b>Der Name ist die Erklärung.</b> Genau derselbe Text steht im Alias
+    /// der zugeordneten Geräte und im Regex des Filters; wer „OsteL" im
+    /// Dropdown sieht, muss nicht raten, wonach gefiltert wird. Ein
+    /// ausgedachter Name wie „Meine Geräte" verdeckt den Zusammenhang.
+    /// </summary>
+    public static string MyDevicesFilterNameFor(string user) => user;
+
+    /// <summary>
+    /// Legt auf einem frischen Rechner zwei Filter an: „Alle" und einen, der
+    /// wie der Anmeldename heißt und auf den Host-Alias geht — und stellt den
     /// zweiten scharf.
     ///
     /// <para>Der Grund ist der Erstkontakt: Wer das Cockpit zum ersten Mal
@@ -199,7 +207,7 @@ public sealed class HostFilterCollection : ObservableObject
             // ein Punkt in „max.mustermann" ist sonst ein Platzhalter.
             var mine = new HostFilter
             {
-                Name = MyDevicesFilterName,
+                Name = MyDevicesFilterNameFor(user),
                 Owner = user,
                 Target = FilterTarget.Alias,
                 HostNameRegex = System.Text.RegularExpressions.Regex.Escape(user)

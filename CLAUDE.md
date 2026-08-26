@@ -674,16 +674,21 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      den Hostnamen.
 
   **Zwei Filter stehen auf einem frischen Rechner schon da**
-  (`HostFilterCollection.SeedStarterFilters`): „Alle Hosts" und „Meine Geräte"
-  (Anmeldename gegen den Alias), letzterer aktiv. Wer das Cockpit zum ersten
-  Mal startet, sähe sonst alle Checks der Stadt und müsste sich erst einen
-  Filter bauen, um die eigenen Geräte zu finden. Drei Punkte:
+  (`HostFilterCollection.SeedStarterFilters`): **„Alle"** und einer, der
+  **wie der Anmeldename heißt** (`OsteL`, `PeaterC`) und dessen Regex gegen den
+  Alias geht — letzterer aktiv. Wer das Cockpit zum ersten Mal startet, sähe
+  sonst alle Checks der Stadt und müsste sich erst einen Filter bauen, um die
+  eigenen Geräte zu finden. Vier Punkte:
   1. **Ganz normale persönliche Filter** — umbenennbar, änderbar, löschbar.
      Nichts Eingebautes, das man nicht loswird.
-  2. **Genau einmal je Site**, gemerkt in `HostFilterState.Seeded` statt am
+  2. **Der Name ist die Erklärung.** Derselbe Text steht im Filternamen, im
+     Regex und im Alias der Geräte; wer „OsteL" im Dropdown sieht, muss nicht
+     raten, wonach gefiltert wird. Ein ausgedachter Name („Meine Geräte")
+     verdeckte genau diesen Zusammenhang.
+  3. **Genau einmal je Site**, gemerkt in `HostFilterState.Seeded` statt am
      leeren Bestand erkannt. Sonst kämen beide beim nächsten Start zurück,
      sobald jemand sie weggeräumt hat.
-  3. **Bei Datenbank-Ausfall wird nicht gesät** (`CanEdit`): Zwei Filter, die
+  4. **Bei Datenbank-Ausfall wird nicht gesät** (`CanEdit`): Zwei Filter, die
      nur im Cache stehen, wären beim nächsten erfolgreichen Laden weg.
   Der Anmeldename wandert per `Regex.Escape` in den Ausdruck — ein Punkt in
   `max.mustermann` wäre sonst ein Platzhalter. Aus dem Hosts-Tab lassen sich per Ctrl+Klick mehrere Hosts
@@ -840,7 +845,7 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      Host-Bezug da ist" zurückbauen. `view`-Werte im Übrigen sind Startwerte und gehen
      nicht nach `statusview.json` (`PersistState` ist No-Op). `matchAlias: true`
      prüft `hostRegex` gegen den Host-Alias statt den Hostnamen; die
-     Start-Filter („Alle Hosts"/„Meine Geräte") entstehen im Viewer-Modus
+     Start-Filter („Alle" + Anmeldename) entstehen im Viewer-Modus
      bewusst **nicht** — sie kämen aus dem Anmeldenamen des Kiosk-Kontos.
 - **Settings:** Verbindung (Host/Site/User/Secret/HTTPS/Cert), Secret verschlüsselt
   via `WindowsDpapiProtector` (DPAPI-CurrentUser). Ablage user-lokal unter

@@ -309,16 +309,20 @@ nur noch die passenden Hosts sichtbar. Zurück auf alle: Auswahl leeren
 
 Beim ersten Start legt das Cockpit zwei Filter an:
 
-- **„Alle Hosts"** — kein Regex, keine Liste: alles.
-- **„Meine Geräte"** — dein Anmeldename gegen den **Host-Alias**. Er ist beim
-  Start vorgewählt.
+- **„Alle"** — kein Regex, keine Liste: alles.
+- **einen, der wie dein Anmeldename heißt** — bei OsteL heißt er „OsteL", bei
+  PeaterC „PeaterC". Sein Regex prüft genau diesen Namen gegen den
+  **Host-Alias**. Er ist beim Start vorgewählt.
+
+Der Name ist dabei die Erklärung: Derselbe Text steht im Filternamen, im Regex
+und im Alias deiner Geräte — du musst nicht raten, wonach gefiltert wird.
 
 Beide sind ganz normale persönliche Favoriten: umbenennen, ändern, löschen —
 alles erlaubt. Weggeräumt bleiben sie weg, sie kommen beim nächsten Start nicht
 zurück.
 
-> Steht dein Kürzel in keinem Alias, ist „Meine Geräte" leer. Das ist kein
-> Fehler — schalt in der Combobox auf „Alle Hosts" um.
+> Steht dein Kürzel in keinem Alias, ist der Filter leer. Das ist kein
+> Fehler — schalt in der Combobox auf „Alle" um.
 
 ### Nach Alias filtern statt nach Hostname
 
