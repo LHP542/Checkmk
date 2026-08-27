@@ -78,11 +78,8 @@ public sealed class MapCanvas : Control
     /// <summary>Zeichnen oder Bearbeiten — für Toolbar-Zustände.</summary>
     public bool IsBusy => IsDrawing || IsEditing;
 
-    /// <summary>Klick auf eine Fläche (im Normalmodus).</summary>
+    /// <summary>Klick auf eine Fläche (im Normalmodus) — links wie rechts.</summary>
     public event Action<int>? AreaClicked;
-
-    /// <summary>Rechtsklick auf eine Fläche oder einen Marker.</summary>
-    public event Action<int>? AreaRightClicked;
 
     /// <summary>Zeichnen abgeschlossen — liefert das fertige Polygon.</summary>
     public event Action<IReadOnlyList<GeoPoint>>? DrawingFinished;
@@ -301,7 +298,12 @@ public sealed class MapCanvas : Control
         var p = e.GetCurrentPoint(this);
 
         // Rechtsklick: im Bearbeitungsmodus nimmt er eine Ecke weg, sonst
-        // oeffnet er das Kontextmenue des getroffenen Bereichs.
+        // markiert er den getroffenen Bereich — genau wie ein Linksklick.
+        //
+        // Ein eigenes Kontextmenue hat die Karte bewusst nicht mehr: Die
+        // Aktionen stehen am Baum links, und die Auswahl springt beim Klick
+        // ohnehin mit. Zwei Menues mit demselben Inhalt an zwei Stellen zu
+        // pflegen war der Preis dafuer, sich einen Blick nach links zu sparen.
         if (p.Properties.IsRightButtonPressed)
         {
             Focus();
@@ -311,10 +313,7 @@ public sealed class MapCanvas : Control
                 return;
             }
             if (HitTest(p.Position) is { } hit)
-            {
-                AreaClicked?.Invoke(hit);        // erst markieren …
-                AreaRightClicked?.Invoke(hit);   // … dann das Menue oeffnen
-            }
+                AreaClicked?.Invoke(hit);
             return;
         }
 

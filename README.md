@@ -1430,12 +1430,13 @@ wenn es eine Fläche gibt):
 Die Karte lässt sich dabei weiter schieben. Unter drei Ecken geht es nicht — aus
 einer Fläche würde sonst eine Linie, die man weder sieht noch anklicken kann.
 
-### Rechtsklick auf der Karte
+### Klick auf der Karte
 
-Auf einer Fläche oder einem Marker öffnet der Rechtsklick dasselbe Menü wie im
-Baum: **Hosts zuweisen**, **Technik verschieben**, **Host-Zuordnung**, **Fläche
-bearbeiten**, **Kartenhintergrund** und **Umbenennen**. Du musst den Standort
-also nicht erst im Baum wiederfinden.
+Ein Klick auf eine Fläche oder einen Marker — links wie rechts — **markiert den
+Bereich**, und zwar auch im Baum links. Die Aktionen dazu (Hosts zuweisen,
+Technik verschieben, Host-Zuordnung, Fläche bearbeiten, Kartenhintergrund,
+Umbenennen) stehen im **Kontextmenü des Baums**; du musst den Standort dort
+also nicht erst suchen, er ist nach dem Klick schon markiert.
 
 Die Ansicht springt dabei **nicht** — du siehst die Fläche ja gerade.
 
@@ -1443,7 +1444,7 @@ Die Ansicht springt dabei **nicht** — du siehst die Fläche ja gerade.
 
 Auf der Campus-Ebene ist die Liegenschaftskarte brauchbar, auf der
 Stadtübersicht unlesbar. Deshalb kann ein Bereich seinen eigenen Hintergrund
-mitbringen: Rechtsklick → **„Kartenhintergrund…"**. Markierst du den Bereich,
+mitbringen: Rechtsklick im Baum → **„Kartenhintergrund…"**. Markierst du den Bereich,
 schaltet die Karte automatisch um; verlässt du ihn, gilt wieder deine Auswahl
 aus der Toolbar. **„(Vorgabe)"** entfernt die Bindung.
 

@@ -367,12 +367,23 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   4. **Die Kante vom letzten zum ersten Punkt hat auch einen Griff** (Umlauf in
      `InsertMidpoint`) — genau dort fehlt beim Nachzeichnen am häufigsten eine
      Ecke.
-- **Rechtsklick auf der Karte** öffnet dasselbe Menü wie am Baum (Hosts
-  zuweisen, Technik verschieben, Host-Zuordnung, Fläche bearbeiten,
-  Kartenhintergrund). Der Weg „Fläche sehen → im Baum suchen → Rechtsklick" war
-  der Umweg bei jedem Zuordnen. **Ein Klick auf der Karte passt die Ansicht
-  nicht neu ein** (`_selectionFromMap`): Man sieht die Fläche ja gerade, und
-  beim Rechtsklick stünde das Menü sonst über einer anderen Stelle.
+- **Die Karte hat bewusst kein eigenes Kontextmenü.** Ein Rechtsklick auf einer
+  Fläche *markiert* den Bereich — wie ein Linksklick —, die Aktionen stehen am
+  Baum links. Es gab kurzzeitig ein zweites, inhaltsgleiches Menü auf der
+  Karte; zwei Menüs an zwei Stellen zu pflegen kostet mehr, als der gesparte
+  Blick nach links einbringt, zumal die Auswahl ohnehin mitspringt.
+  Zwei Punkte, die dabei gelten:
+  1. **Ein Menü öffnet nur auf dem Control, an dem es hängt.** Das Kartenmenü
+     hing per `Grid.ContextMenu` am umgebenden Grid und wurde mit
+     `Open(_map)` auf der `MapCanvas` darin geöffnet — Avalonia quittiert das
+     mit `„Cannot show ContextMenu on a different control to the one it is
+     attached to"`, und der globale Handler beendet die App. Wer je wieder ein
+     Menü an die Karte hängt: an die `MapCanvas` selbst, und `ContextRequested`
+     unterbinden, sonst öffnet Avalonia es bei *jedem* Rechtsklick von selbst —
+     auch auf leerer Karte, wo „Fläche bearbeiten" auf nichts zeigt.
+  2. **Ein Klick auf der Karte passt die Ansicht nicht neu ein**
+     (`_selectionFromMap`): Man sieht die Fläche ja gerade; ein Nachzentrieren
+     zöge sie unter dem Mauszeiger weg.
 - **`Area.MapLayerKey` ist der Hintergrund je Bereich.** Auf der Campus-Ebene
   ist die Liegenschaftskarte brauchbar, auf der Stadtübersicht unlesbar —
   deshalb hängt die Wahl am Bereich, nicht an der Zoomstufe. Gespeichert wird
@@ -823,8 +834,8 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   1. **Ohne `show: true` bleibt der Tab weg.** Sonst bekäme jede bestehende
      Kiosk-Ausgabe beim Update ungefragt einen neuen Tab.
   2. **Lesend, ohne neue Sperren.** Sämtliche Schreibknöpfe der `AreaView`
-     hängen schon an `CanWrite`; der Abschnitt schaltet nichts frei. Das
-     Kontextmenü der Karte prüft zusätzlich in `OnMapAreaRightClicked`.
+     hängen schon an `CanWrite`; der Abschnitt schaltet nichts frei. Die Karte
+     selbst hat kein Kontextmenü, über das sich daran vorbeikommen ließe.
   3. **Startwerte, keine Sperre.** Wer vor dem Bildschirm steht, darf schieben
      und zoomen; nach dem Neustart steht wieder die vorgesehene Sicht da
      (`_viewerMapApplied` läuft genau einmal). Ein Bereichsname, den es nicht

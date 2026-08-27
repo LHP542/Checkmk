@@ -127,30 +127,12 @@
 
       <Border Grid.Column="2" BorderBrush="#3A3A3A" BorderThickness="1">
         <Grid>
-          <!-- Dasselbe Menü wie am Baum. Der Weg „Fläche sehen → im Baum
-               suchen → Rechtsklick" war der Umweg bei jedem Zuordnen.
-
-               Das Menü hängt an der MapCanvas selbst, nicht am Grid darum:
-               Avalonia lässt ein ContextMenu nur auf genau dem Control öffnen,
-               an dem es hängt („Cannot show ContextMenu on a different control
-               to the one it is attached to"). Am Grid hängend war jeder
-               Rechtsklick auf einer Fläche ein Absturz. -->
-          <controls:MapCanvas Name="Map">
-            <controls:MapCanvas.ContextMenu>
-              <ContextMenu Name="MapMenu">
-                <MenuItem Header="Hosts zuweisen…" Click="OnAssignHostsClick" />
-                <MenuItem Header="Technik verschieben nach…" Click="OnMoveHostsClick" />
-                <MenuItem Header="Host-Zuordnung…" Click="OnEditPatternClick" />
-                <Separator />
-                <MenuItem Header="Fläche bearbeiten" Click="OnEditAreaClick" />
-                <MenuItem Header="Kartenhintergrund…" Click="OnAreaLayerClick"
-                          ToolTip.Tip="Eigener Hintergrund für diesen Bereich — etwa ein Gebäudeplan auf der Campus-Ebene." />
-                <Separator />
-                <MenuItem Header="Sichtbar in Sites…" Click="OnEditSitesClick" />
-                <MenuItem Header="Umbenennen…" Click="OnRenameClick" />
-              </ContextMenu>
-            </controls:MapCanvas.ContextMenu>
-          </controls:MapCanvas>
+          <!-- Bewusst OHNE eigenes Kontextmenü: Ein Rechtsklick auf einer
+               Fläche markiert den Bereich, das Menü dazu steht im Baum links.
+               Zwei Menüs mit demselben Inhalt an zwei Stellen zu pflegen war
+               der Preis, und der lohnt sich nicht — die Auswahl springt
+               ohnehin mit. -->
+          <controls:MapCanvas Name="Map" />
 
           <!-- Hinweisleiste im Zeichenmodus: die Tastenkürzel stehen sonst nur
                im ToolTip des Buttons, den man beim Zeichnen nicht mehr sieht. -->
