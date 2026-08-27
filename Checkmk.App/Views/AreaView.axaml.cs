@@ -35,6 +35,14 @@ public partial class AreaView : UserControl
             _map.GeometryEdited += OnMapGeometryEdited;
             _map.DrawingModeChanged += UpdateDrawState;
 
+            // Avalonia oeffnet ein angehaengtes ContextMenu bei jedem
+            // Rechtsklick von selbst — auch auf leerer Karte, wo „Flaeche
+            // bearbeiten" und „Umbenennen" auf nichts zeigen. Wir unterbinden
+            // das komplett und oeffnen ausschliesslich in
+            // OnMapAreaRightClicked, also nur wenn wirklich ein Bereich
+            // getroffen wurde.
+            _map.ContextRequested += (_, e) => e.Handled = true;
+
             // GetService wegen des XAML-Previewers (kein DI-Container).
             if (App.Services?.GetService<MapTileLoader>() is { } tiles)
             {
@@ -319,11 +327,18 @@ public partial class AreaView : UserControl
     /// Rechtsklick auf der Karte öffnet dasselbe Menü wie im Baum. Der Weg
     /// „Fläche sehen → im Baum suchen → Rechtsklick" war der Umweg, den man
     /// bei jedem Zuordnen ging.
+    ///
+    /// <para><b>Geöffnet wird auf der <see cref="MapCanvas"/>, und dort hängt
+    /// das Menü auch.</b> Avalonia lässt ein ContextMenu nur auf genau dem
+    /// Control öffnen, an dem es hängt — hing es am umgebenden Grid, warf
+    /// jeder Rechtsklick auf einer Fläche <i>„Cannot show ContextMenu on a
+    /// different control to the one it is attached to"</i>, und der globale
+    /// Handler beendete die App.</para>
     /// </summary>
     private void OnMapAreaRightClicked(int areaId)
     {
         if (Vm is not { CanWrite: true } || _map is null) return;
-        if (this.FindControl<ContextMenu>("MapMenu") is not { } menu) return;
+        if (_map.ContextMenu is not { } menu) return;
 
         menu.Open(_map);
     }
