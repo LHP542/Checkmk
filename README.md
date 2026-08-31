@@ -321,6 +321,11 @@ Beide sind ganz normale persönliche Favoriten: umbenennen, ändern, löschen �
 alles erlaubt. Weggeräumt bleiben sie weg, sie kommen beim nächsten Start nicht
 zurück.
 
+> Der Merker dafür liegt auf dem Rechner. Wer **alle** seine Filter löscht und
+> sich danach an einem anderen Rechner anmeldet, bekommt die beiden dort noch
+> einmal — mit null Filtern anzufangen ist ja genau der Fall, für den sie
+> gedacht sind.
+
 > Steht dein Kürzel in keinem Alias, ist der Filter leer. Das ist kein
 > Fehler — schalt in der Combobox auf „Alle" um.
 

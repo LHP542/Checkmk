@@ -71,6 +71,9 @@
           <MenuItem Header="Host-Zuordnung…" Click="OnEditPatternClick"
                     IsVisible="{Binding CanWrite}"
                     ToolTip.Tip="Woher dieser Bereich seine Hosts bekommt: Checkmk-Ortstag oder Namensmuster. Bei Schulen aus der Schulnummer vorbelegt." />
+          <MenuItem Header="Kartenhintergrund…" Click="OnAreaLayerClick"
+                    IsVisible="{Binding CanWrite}"
+                    ToolTip.Tip="Eigener Hintergrund für diesen Bereich — etwa die Liegenschaftskarte auf der Campus-Ebene. „(Vorgabe)“ entfernt die Bindung wieder." />
           <Separator IsVisible="{Binding CanWrite}" />
           <MenuItem Header="Unterbereich…" Click="OnNewChildAreaClick"
                     IsVisible="{Binding CanWrite}" />

@@ -105,9 +105,7 @@ public sealed partial class CatalogEntry : ObservableObject
             // etwas voellig anderes als gegen den Hostnamen.
             : $"{_filter.TargetDisplay} ~ {_filter.HostNameRegex}";
 
-    public string Matches => IsDeleted
-        ? "wird gelöscht"
-        : _matchCount >= 0 ? $"trifft gerade {_matchCount} Hosts" : "";
+    public string Matches => _matchCount >= 0 ? $"trifft gerade {_matchCount} Hosts" : "";
 
     public bool Contains(string needle)
         => Name.Contains(needle, StringComparison.OrdinalIgnoreCase)

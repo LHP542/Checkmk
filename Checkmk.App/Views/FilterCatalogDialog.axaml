@@ -43,7 +43,13 @@
                 <TextBlock Text="{Binding Rule}" FontSize="11" Foreground="#8FA8C0"
                            FontFamily="Consolas,Courier New,monospace"
                            TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Matches}" FontSize="11" Foreground="#66BB6A" />
+                <TextBlock Text="{Binding Matches}" FontSize="11" Foreground="#66BB6A"
+                           IsVisible="{Binding IsAlive}" />
+                <!-- Eigene Zeile statt derselben in Grün: „wird gelöscht" in
+                     der Trefferfarbe läse sich wie eine Bestätigung. -->
+                <TextBlock Text="Wird beim Übernehmen gelöscht" FontSize="11"
+                           Foreground="#EF5350" FontWeight="SemiBold"
+                           IsVisible="{Binding IsDeleted}" />
               </StackPanel>
 
               <!-- Löschen sitzt hier und nicht im Filter-Manager: Wer einen

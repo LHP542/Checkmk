@@ -182,8 +182,16 @@ public sealed class HostFilterCollection : ObservableObject
     /// einen Filter bauen, um seine eigenen Geräte zu finden. Beide Filter sind
     /// ganz normale persönliche Filter — umbenennbar, änderbar, löschbar.</para>
     ///
-    /// <para><b>Genau einmal je Site</b> (<see cref="HostFilterState.Seeded"/>):
+    /// <para><b>Einmal je Rechner und Site</b> (<see cref="HostFilterState.Seeded"/>):
     /// Wer sie wegräumt, soll sie nicht beim nächsten Start wiederhaben.</para>
+    ///
+    /// <para><b>Der Merker liegt lokal, die Filter zentral</b> — das ist eine
+    /// bewusst in Kauf genommene Lücke: Wer alle seine Filter löscht (auf
+    /// <i>null</i>, nicht bloß die beiden) und danach an einem zweiten Rechner
+    /// startet, bekommt sie dort wieder. Ihn zentral zu merken hieße eine
+    /// Tabelle für benutzerbezogenen Zustand und damit ein Schema-Skript für
+    /// eine Bequemlichkeit; und wer mit null Filtern an einem neuen Rechner
+    /// sitzt, ist genau der Fall, für den das Säen gedacht ist.</para>
     /// </summary>
     private void SeedStarterFilters()
     {

@@ -696,9 +696,14 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      Regex und im Alias der Geräte; wer „OsteL" im Dropdown sieht, muss nicht
      raten, wonach gefiltert wird. Ein ausgedachter Name („Meine Geräte")
      verdeckte genau diesen Zusammenhang.
-  3. **Genau einmal je Site**, gemerkt in `HostFilterState.Seeded` statt am
-     leeren Bestand erkannt. Sonst kämen beide beim nächsten Start zurück,
-     sobald jemand sie weggeräumt hat.
+  3. **Einmal je Rechner und Site**, gemerkt in `HostFilterState.Seeded` statt
+     am leeren Bestand erkannt. Sonst kämen beide beim nächsten Start zurück,
+     sobald jemand sie weggeräumt hat. Der Merker liegt **lokal**, die Filter
+     zentral — wer *alle* seine Filter löscht und danach an einem zweiten
+     Rechner startet, bekommt sie dort wieder. Bewusst in Kauf genommen: der
+     zentrale Merker wäre eine Tabelle für benutzerbezogenen Zustand, und wer
+     mit null Filtern an einem neuen Rechner sitzt, ist genau der Fall, für den
+     gesät wird.
   4. **Bei Datenbank-Ausfall wird nicht gesät** (`CanEdit`): Zwei Filter, die
      nur im Cache stehen, wären beim nächsten erfolgreichen Laden weg.
   Der Anmeldename wandert per `Regex.Escape` in den Ausdruck — ein Punkt in
