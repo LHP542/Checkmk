@@ -1011,6 +1011,23 @@ maskieren), globaler Exception-Handler. **Single-TFM**: `Checkmk.App` und
 DPAPI). `Checkmk.Core` bleibt `net10.0`. CI läuft auf `windows-latest`, Release
 erzeugt bei Tag `v*` ausschließlich das Windows-ZIP.
 
+**Ausnahmen aus dem UI-Thread beenden die App nicht** (`App.InstallUiExceptionGuard`,
+`Dispatcher.UIThread.UnhandledException` → `Handled = true`, geloggt auf `Error`).
+Ein Ereignis-Handler ist fast immer `async void` — anders lässt sich ein
+Click-Handler nicht schreiben —, und eine Ausnahme darin kann niemand
+zurückgeben: Sie läuft durch die Dispatcher-Schleife bis in den `catch` in
+`Program.Main`, der sie als `FATAL` loggt, und danach ist der Prozess weg.
+Zweimal real passiert (2026-08-27, Rechtsklick auf einer Karten-Fläche;
+v1.0–v1.4, Schreibfehler beim Speichern der Einstellungen). Es gibt rund 45
+solcher Handler; sie einzeln in `try` zu hüllen ist eine Disziplinfrage, die man
+irgendwann verliert. **Nicht als „verschluckt Fehler" entfernen** — der Preis
+ist bewusst bezahlt: Ein Werkzeug, dessen Aufgabe die Überwachung *anderer*
+Systeme ist, darf nicht an einem Fehlklick sterben, und `Error` im Log fällt
+auf. Die Handler in `Program.Main` bleiben für alles außerhalb des UI-Threads
+zuständig; die `try`-Blöcke an schreibenden Stellen (z. B.
+`SettingsViewModel.Save`) bleiben ebenfalls, weil sie dem Anwender *sagen*, was
+schiefging, statt es nur zu überleben.
+
 **Release-Notes-Konvention:** Für ausführliche Notes eine Datei
 `RELEASE_NOTES/<tag>.md` im Repo anlegen (Beispiel: `RELEASE_NOTES/v1.0.0.md`).
 Der Release-Workflow liest sie bevorzugt; Fallback ist die Message des annotated
