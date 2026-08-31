@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:Checkmk.App.Controls"
         x:Class="Checkmk.App.Views.UpdateDialog"
-        Width="520" Height="520"
+        Width="680" Height="620" MinWidth="520" MinHeight="420"
         Title="Update verfügbar"
         WindowStartupLocation="CenterOwner">
 
@@ -14,17 +14,22 @@
       <StackPanel Grid.Row="1" Margin="20,16,20,8" Spacing="4">
         <TextBlock Text="Neue Version verfügbar" FontSize="18" FontWeight="Bold" />
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <TextBlock Name="VersionText" Foreground="#123E6B" FontWeight="SemiBold" />
+          <TextBlock Name="VersionText" Foreground="#4FA3E3" FontWeight="SemiBold" />
           <TextBlock Name="CurrentVersionText" Foreground="#888888" />
         </StackPanel>
       </StackPanel>
 
-      <Border Grid.Row="2" Background="#252526" CornerRadius="6" Margin="20,4,20,12" Padding="12">
+      <!-- Die Notes werden in NotesPanel aus ReleaseNotesFormatter aufgebaut:
+           Überschriften, Absätze, Aufzählungen, Codeblöcke. Ein einzelnes
+           TextBlock mit dem rohen Markdown brach den ohnehin schon hart
+           umbrochenen Text ein zweites Mal um — mitten im Satz. -->
+      <Border Grid.Row="2" Background="#252526" CornerRadius="6" Margin="20,4,20,12"
+              Padding="16,12">
         <Grid RowDefinitions="Auto,*">
-          <TextBlock Grid.Row="0" Text="Release-Notes" Foreground="#888888" FontSize="11"
-                     Margin="0,0,0,6" />
-          <ScrollViewer Grid.Row="1">
-            <TextBlock Name="NotesText" TextWrapping="Wrap" FontFamily="Consolas,Courier New,monospace" />
+          <TextBlock Grid.Row="0" Text="Was sich ändert" Foreground="#888888" FontSize="11"
+                     Margin="0,0,0,8" />
+          <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Name="NotesPanel" Margin="0,0,10,0" />
           </ScrollViewer>
         </Grid>
       </Border>
@@ -33,17 +38,23 @@
       <StackPanel Grid.Row="3" Name="ProgressPanel" IsVisible="False"
                   Margin="20,0,20,10" Spacing="4">
         <ProgressBar Name="DownloadBar" Minimum="0" Maximum="1" Height="8" />
-        <TextBlock Name="ProgressText" FontSize="12" Foreground="#AAAAAA" />
+        <TextBlock Name="ProgressText" FontSize="12" Foreground="#AAAAAA"
+                   TextWrapping="Wrap" />
       </StackPanel>
 
-      <StackPanel Grid.Row="4" Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Right"
-                  Margin="20,0,20,16" Spacing="8">
+      <!-- WrapPanel statt StackPanel: Vier Knöpfe mit langen Beschriftungen
+           passen nicht in jede Fensterbreite, und „Jetzt installieren" lief
+           rechts aus dem Fenster heraus. Umbrechen statt abschneiden — dieselbe
+           Lehre wie im Filter-Manager. -->
+      <WrapPanel Grid.Row="4" Name="ButtonRow" Orientation="Horizontal"
+                 HorizontalAlignment="Right" Margin="20,0,20,16"
+                 ItemSpacing="8" LineSpacing="8">
         <Button Name="SkipButton" Content="Diese Version überspringen" Click="OnSkipClick" />
         <Button Name="LaterButton" Content="Später" Click="OnLaterClick" />
         <Button Name="ReleaseButton" Content="Release-Seite öffnen" Click="OnOpenReleaseClick" />
         <Button Name="InstallButton" Content="Jetzt installieren" Click="OnInstallClick"
                 Background="#123E6B" IsDefault="True" />
-      </StackPanel>
+      </WrapPanel>
     </Grid>
   </Border>
 </controls:ChromeWindow>
