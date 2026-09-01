@@ -141,6 +141,17 @@ public class ReleaseNotesFormatterTests
         => ReleaseNotesFormatter.Inline("Ein **offener Anfang ohne Ende")
             .Should().AllSatisfy(p => p.Bold.Should().BeFalse());
 
+    /// <summary>
+    /// Und sie darf auch nicht verschwinden. Auf dem ersten Doku-Bild stand
+    /// „samt ## und ." — im Quelltext „samt `##` und `**`.". Wer ueber Markdown
+    /// schreibt, meint die Zeichen manchmal woertlich.
+    /// </summary>
+    [Fact]
+    public void Eine_offene_Markierung_bleibt_im_Text_stehen()
+        => ReleaseNotesFormatter.Inline("Das Markdown stand roh da, samt ## und **.")
+            .Should().ContainSingle().Subject
+            .Should().Be(("Das Markdown stand roh da, samt ## und **.", false));
+
     [Fact]
     public void Text_ohne_Markierung_bleibt_ein_Stueck()
         => ReleaseNotesFormatter.Inline("Ganz normaler Satz.")

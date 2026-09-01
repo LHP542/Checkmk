@@ -21,8 +21,13 @@ public partial class HostDetailWindow : ChromeWindow
         AvaloniaXamlLoader.Load(this);
         _vm = vm;
         DataContext = vm;
-        // Initial-Load, sobald das Fenster steht.
-        Opened += async (_, _) => await vm.RefreshAsync();
+        // Initial-Load, sobald das Fenster steht. AutoLoad ist nur im
+        // Screenshot-Werkzeug aus — dort sind die Daten schon gesetzt und
+        // duerfen nicht ueberschrieben werden.
+        Opened += async (_, _) =>
+        {
+            if (vm.AutoLoad) await vm.RefreshAsync();
+        };
     }
 
     // Parameterloser ctor nur fuer den XAML-Designer.

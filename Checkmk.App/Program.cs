@@ -37,6 +37,17 @@ internal static class Program
             if (TryRunSignUpdate(args)) return;
             if (TryShowUsage(args)) return;
 
+#if DEBUG
+            // Werkzeugmodus fuer Doku-Bilder: baut die Fenster mit erfundenen
+            // Daten und beendet sich. Bewusst VOR dem DI-Aufbau — er braucht
+            // weder Datenbank noch Verbindung, und er soll beides nicht anfassen.
+            if (Tools.ScreenshotTool.TryParse(args))
+            {
+                BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+                return;
+            }
+#endif
+
             App.Services = BuildServiceProvider();
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
@@ -193,7 +204,11 @@ internal static class Program
     /// Kurzhilfe, die niemand sieht.
     /// </summary>
     internal static readonly string[] KnownSwitches =
-        ["--protect-db", "--make-update-key", "--sign-update", "--help", AutoStart.TraySwitch];
+        ["--protect-db", "--make-update-key", "--sign-update", "--help", AutoStart.TraySwitch,
+#if DEBUG
+         Tools.ScreenshotTool.Switch,
+#endif
+        ];
 
     /// <summary>
     /// Fängt unbekannte <c>--</c>-Schalter ab und zeigt die Kurzhilfe.

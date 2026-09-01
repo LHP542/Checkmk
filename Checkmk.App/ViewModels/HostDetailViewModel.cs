@@ -50,6 +50,17 @@ public sealed partial class HostDetailViewModel : ViewModelBase
     /// Service) und das Loeschen von Kommentaren aus.</summary>
     public bool CanWrite { get; }
 
+    /// <summary>
+    /// Soll das Fenster sich beim Oeffnen selbst laden? Normalfall ja.
+    ///
+    /// <para>Auf false gesetzt vom Werkzeugmodus <c>--screenshots</c>: Ein
+    /// Fenster, das beim Oeffnen selbsttaetig nachlaedt, ueberschreibt die
+    /// eingesetzten Demodaten — im Bild stuende dann „Nicht konfiguriert" statt
+    /// des Hosts, oder schlimmer: bei bestehender Verbindung echte Werte aus
+    /// dem Betrieb.</para>
+    /// </summary>
+    public bool AutoLoad { get; init; } = true;
+
     public HostDetailViewModel(ICheckmkClientProvider clients, string hostName, bool canWrite = true)
     {
         _clients = clients;

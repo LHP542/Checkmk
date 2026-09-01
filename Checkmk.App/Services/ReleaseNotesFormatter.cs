@@ -145,20 +145,27 @@ public static class ReleaseNotesFormatter
 
     /// <summary>
     /// Zerlegt eine Zeile in Stücke mit und ohne Fettung (<c>**…**</c>).
-    /// Ungerade Anzahl an Markierungen: der Rest bleibt normal, statt den
-    /// halben Absatz fett zu setzen.
+    ///
+    /// <para><b>Eine unpaarige Markierung bleibt stehen, statt zu
+    /// verschwinden.</b> Vorher wurden die Sternchen in jedem Fall
+    /// weggeschnitten — aus dem Satz „samt <c>##</c> und <c>**</c>" wurde
+    /// „samt ## und ." Auf dem ersten Doku-Bild gut zu sehen. Wer über Markdown
+    /// schreibt, meint die Zeichen manchmal wörtlich; ohne sauberes Paar wird
+    /// deshalb gar nichts gedeutet.</para>
     /// </summary>
     public static IReadOnlyList<(string Text, bool Bold)> Inline(string text)
     {
-        var parts = new List<(string, bool)>();
         var segments = text.Split("**");
 
+        // Gerade Anzahl Segmente = ungerade Anzahl Markierungen = keine saubere
+        // Paarung. Dann ist der Text so gemeint, wie er dasteht.
+        if (segments.Length % 2 == 0) return [(text, false)];
+
+        var parts = new List<(string, bool)>();
         for (var i = 0; i < segments.Length; i++)
         {
             if (segments[i].Length == 0) continue;
-            // Nur bei paarweise geschlossenen Markierungen fetten.
-            var bold = i % 2 == 1 && segments.Length % 2 == 1;
-            parts.Add((segments[i], bold));
+            parts.Add((segments[i], i % 2 == 1));
         }
 
         return parts.Count == 0 ? [(text, false)] : parts;

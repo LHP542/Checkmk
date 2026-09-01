@@ -11,6 +11,15 @@ Zeile, an der du das Problem siehst.
 Dieses Handbuch beschreibt alle Funktionen des Cockpits aus Anwendersicht. Wer
 sich für Architektur und Interna interessiert: [`CLAUDE.md`](CLAUDE.md).
 
+![Status-Tab](docs/status.png)
+
+> Alle Bilder in diesem Handbuch zeigen **erfundene Daten** — „Musterstadt",
+> `beispiel.intern`, ausgedachte Kürzel. Sie entstehen mit
+> `Checkmk.App.exe --screenshots docs` (nur im Debug-Build) und nicht aus dem
+> laufenden Betrieb: Ein echter Screenshot zeigte Hostnamen, die interne Domäne
+> und über den Host-Alias die Anmeldenamen von Kolleginnen und Kollegen — in
+> einem öffentlichen Repository.
+
 ---
 
 ## Inhalt
@@ -261,6 +270,8 @@ Schlüssel `HostOsAttributeKeys` — Default probiert `tag_operation_system`,
 
 ## 6. Host-Details
 
+![Host-Details](docs/hostdetail.png)
+
 **Doppelklick** auf eine Zeile (Status-Tab, Hosts-Tab oder Baum) oder
 **Rechtsklick → „Host-Details…"** öffnet ein eigenes Fenster mit:
 
@@ -366,6 +377,8 @@ das Tool automatisch einen neuen an — der Klick landet nie ins Leere.
 
 ### Favoriten verwalten
 
+![Filter verwalten](docs/filter-manager.png)
+
 **„Filter verwalten…"** öffnet ein eigenes Fenster mit einer Liste aller
 Favoriten der aktuellen Site. Rechts der Editor mit drei Feldern:
 
@@ -386,6 +399,8 @@ Buttons:
 - **„Filter deaktivieren"** — kein Filter aktiv, alle Hosts sichtbar.
 
 ### Filter teilen: der Katalog
+
+![Filter-Katalog](docs/filter-katalog.png)
 
 Bisher baute sich jeder seinen eigenen Filtersatz — und wenn der
 Netzwerkkollege im Urlaub war, fing die Vertretung bei null an.
@@ -709,6 +724,8 @@ wieder dort.
 ---
 
 ## 14. Updates
+
+![Update-Dialog](docs/update.png)
 
 Das Tool prüft **beim Start** einmal, ob es eine neuere Version auf GitHub gibt.
 Der Check läuft im Hintergrund und blockiert die App nicht.

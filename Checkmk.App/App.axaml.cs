@@ -24,6 +24,24 @@ public partial class App : Application
     {
         InstallUiExceptionGuard();
 
+#if DEBUG
+        // Werkzeugmodus: keine Verbindung, keine Datenbank, kein Hauptfenster —
+        // nur Bilder rendern und beenden.
+        if (Tools.ScreenshotTool.IsActive)
+        {
+            // Pflicht: Das Werkzeug schliesst jedes Fenster nach dem Rendern,
+            // und mit der Vorgabe OnLastWindowClose beendet Avalonia die App
+            // dann nach dem ERSTEN Bild — ohne Fehler, ohne Ausgabe. Sah aus
+            // wie ein Haenger und war ein Lebenszyklus.
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime tool)
+                tool.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            Tools.ScreenshotTool.RunAsync();
+            base.OnFrameworkInitializationCompleted();
+            return;
+        }
+#endif
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var window = Services.GetRequiredService<MainWindow>();

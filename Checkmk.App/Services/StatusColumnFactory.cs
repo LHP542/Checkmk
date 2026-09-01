@@ -126,11 +126,19 @@ public static class StatusColumnFactory
         Width = new DataGridLength(1, DataGridLengthUnitType.Star)
     };
 
+    /// <summary>
+    /// Ja/Nein-Spalte (Ack, Downtime).
+    ///
+    /// <para>66 px und nicht 50: Neben dem Text sitzen noch das Sortierdreieck
+    /// und die Kopfzeilen-Polsterung. Bei 50 px blieb von „Ack" ein „A" und von
+    /// „DT" ein „D" übrig — aufgefallen erst auf dem ersten Doku-Bild, weil man
+    /// im Alltag weiß, was in der Spalte steht.</para>
+    /// </summary>
     private static DataGridCheckBoxColumn Check(string header, string path) => new()
     {
         Header = header,
         Binding = new Binding(path),
-        Width = new DataGridLength(50)
+        Width = new DataGridLength(66)
     };
 
     /// <summary>Ampelpunkt wie im XAML-Standardgrid.</summary>

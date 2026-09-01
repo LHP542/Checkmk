@@ -65,8 +65,10 @@
 
             <TextBlock Grid.Row="1" Grid.Column="0" Text="Alias" Foreground="#888" FontSize="11" />
             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding HostConfig.Extensions.Attributes.Alias, FallbackValue=—}" />
-            <TextBlock Grid.Row="1" Grid.Column="2" Text="Ack" Foreground="#888" FontSize="11" />
-            <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding HostStatus.IsAcknowledged, FallbackValue=—}" />
+            <!-- Hier stand einmal „Ack: False" — ein roher Wahrheitswert, noch
+                 dazu englisch, und überflüssig: Ob quittiert ist, sagt das
+                 Abzeichen oben. Fehlt es, ist nichts quittiert. Aufgefallen
+                 erst auf dem ersten Doku-Bild. -->
 
             <TextBlock Grid.Row="2" Grid.Column="0" Text="Ausgabe" Foreground="#888" FontSize="11" />
             <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3"
@@ -137,8 +139,9 @@
           <DataGridTextColumn Header="Service" Binding="{Binding Description}" Width="260" />
           <DataGridTextColumn Header="Status" Binding="{Binding ServiceState}" Width="90" />
           <DataGridTextColumn Header="Ausgabe" Binding="{Binding PluginOutput}" Width="*" />
-          <DataGridCheckBoxColumn Header="Ack" Binding="{Binding IsAcknowledged}" Width="50" />
-          <DataGridCheckBoxColumn Header="DT" Binding="{Binding InDowntime}" Width="50" />
+          <!-- 66 statt 50: Bei 50 px blieb vom Kopf „Ack" ein „A" uebrig (Sortierdreieck + Polsterung). -->
+          <DataGridCheckBoxColumn Header="Ack" Binding="{Binding IsAcknowledged}" Width="66" />
+          <DataGridCheckBoxColumn Header="DT" Binding="{Binding InDowntime}" Width="66" />
           <DataGridTextColumn Header="Letzter Check"
                               Binding="{Binding LastCheck, StringFormat='{}{0:HH:mm:ss}'}" Width="110" />
         </DataGrid.Columns>

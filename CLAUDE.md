@@ -1028,6 +1028,31 @@ zuständig; die `try`-Blöcke an schreibenden Stellen (z. B.
 `SettingsViewModel.Save`) bleiben ebenfalls, weil sie dem Anwender *sagen*, was
 schiefging, statt es nur zu überleben.
 
+**Doku-Bilder entstehen aus der App selbst** (`Checkmk.App.exe --screenshots docs`,
+nur im Debug-Build, `Tools/ScreenshotTool.cs` + `Tools/DemoData.cs`). Die Fenster
+werden mit erfundenen Daten gebaut, außerhalb des Bildschirms gezeigt und per
+`RenderTargetBitmap` gerendert. Fünf Punkte:
+1. **Erfundene Daten sind Pflicht, nicht Kosmetik.** Das Repository ist
+   öffentlich; ein Bild aus dem Betrieb zeigt Hostnamen, `lhp.intern` und über
+   den Host-Alias die Anmeldenamen der Kollegen.
+2. **Fenster, die beim Öffnen selbst nachladen, brauchen einen Schalter**
+   (`HostDetailViewModel.AutoLoad`). Sonst überschreibt der Selbst-Load die
+   eingesetzten Demodaten — bei bestehender Verbindung mit *echten* Werten.
+3. **`ShutdownMode.OnExplicitShutdown` ist Pflicht.** Das Werkzeug schließt
+   jedes Fenster nach dem Rendern; mit der Vorgabe `OnLastWindowClose` beendet
+   sich die App nach dem ersten Bild — ohne Fehler, ohne Ausgabe. Sah aus wie
+   ein Hänger und war ein Lebenszyklus.
+4. **Ohne `Show()` bleibt die Bitmap leer** (kein Layout, keine Größe), und
+   ohne mehrere Dispatcher-Runden landet ein halb aufgebautes Fenster im Bild.
+5. **Die Bilder ansehen, nicht nur die Dateigröße prüfen.** Der erste Lauf hat
+   drei echte Fehler gezeigt, die kein Test findet: abgeschnittene
+   Spaltenköpfe („A" statt „Ack", 50 px zu schmal), ein rohes `False` im
+   Host-Kopf (`Ack`-Zeile, überflüssig neben dem Abzeichen) und ein
+   verschlucktes unpaariges `**` im Release-Notes-Formatierer.
+Nicht auf UI-Fernsteuerung von außen umbauen (`SetForegroundWindow`,
+`mouse_event`, `PrintWindow`): Das ist aus Sicht der Verhaltens-AV das Muster
+eines RATs und wird auf dem Arbeitslaptop blockiert.
+
 **Release-Notes-Konvention:** Für ausführliche Notes eine Datei
 `RELEASE_NOTES/<tag>.md` im Repo anlegen (Beispiel: `RELEASE_NOTES/v1.0.0.md`).
 Der Release-Workflow liest sie bevorzugt; Fallback ist die Message des annotated

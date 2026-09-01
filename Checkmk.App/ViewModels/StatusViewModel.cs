@@ -47,6 +47,43 @@ public sealed partial class StatusViewModel : ViewModelBase
     /// </summary>
     public IReadOnlyList<ServiceStatus> AllServices => _allServices;
 
+#if DEBUG
+    /// <summary>
+    /// Füllt die Ansicht mit erfundenen Daten, ohne einen Server zu befragen —
+    /// für den Werkzeugmodus <c>--screenshots</c>.
+    ///
+    /// <para><b>Warum ein eigener Weg und nicht der echte Refresh:</b> Der
+    /// Client kommt aus <c>ICheckmkClientProvider</c> und ist ein konkreter
+    /// <c>CheckmkClient</c>, keine Schnittstelle — es gibt also keine Attrappe,
+    /// über die sich Daten einspeisen ließen. Und die Bilder landen in einem
+    /// <b>öffentlichen</b> Repository: Ein Screenshot gegen den echten Server
+    /// zeigte Hostnamen, Anmeldenamen aus den Aliassen und die interne
+    /// Domäne.</para>
+    ///
+    /// <para>Steht hinter <c>#if DEBUG</c> und ist damit im Release-Binary
+    /// nicht enthalten.</para>
+    /// </summary>
+    internal void LoadDemoData(List<ServiceStatus> services, int hostsUp, int hostsDown,
+        IReadOnlyDictionary<string, OsFamily>? osByHost = null)
+    {
+        _allServices = services;
+        _osByHost = osByHost is null
+            ? new Dictionary<string, OsFamily>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, OsFamily>(osByHost, StringComparer.OrdinalIgnoreCase);
+
+        HostsUp = hostsUp;
+        HostsDown = hostsDown;
+        ServicesOk = services.Count(s => s.ServiceState == ServiceState.Ok);
+        ServicesWarn = services.Count(s => s.ServiceState == ServiceState.Warning);
+        ServicesCrit = services.Count(s => s.ServiceState == ServiceState.Critical);
+
+        ApplyFilter();
+
+        StatusMessage = $"Aktualisiert {DateTime.Now:HH:mm:ss} — {services.Count} Services, "
+                      + $"{hostsUp + hostsDown} Hosts in 1,4 s.";
+    }
+#endif
+
     /// <summary>false = Tabelle, true = Baum.</summary>
     [ObservableProperty]
     private bool _treeView;
