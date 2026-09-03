@@ -852,6 +852,21 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   aktivem Snooze. Der `Topmost`-Toggle in `PopUpForProblem` ist nötig, weil `Activate()`
   allein unter Windows den Vordergrund nicht erzwingt; den Tastaturfokus vergibt Windows
   trotzdem nach eigenen Regeln, sichtbar-und-oben ist garantiert, fokussiert nicht.
+  **`popUpSound`** (Default **false**) legt einen Warnton dazu (`AlertSound`,
+  `PlaySound` aus der winmm.dll; `popUpSoundFile` für eine eigene WAV, leer =
+  Systemklang `SystemExclamation`). Vier Punkte:
+  1. **Default aus** — sonst fängt jede bestehende Kiosk-Ausgabe nach dem
+     Update ungefragt an zu piepen, dieselbe Überlegung wie bei `map.show`.
+  2. **Der Ton hängt am Aufspringen**, nicht am Refresh: Er meldet dasselbe wie
+     das Fenster. Ein Geräusch ohne sichtbare Ursache ist schlimmer als keins,
+     und damit gelten Recovery- und Snooze-Regel automatisch mit.
+  3. **`SND_ASYNC` ist Pflicht.** Synchron hielte der Aufruf den UI-Thread für
+     die Dauer des Klangs an — ausgerechnet während das Fenster hochkommt.
+  4. **Kein Ton ist kein Fehler** (nur `Debug` ins Log). Ein Kiosk-Rechner hat
+     womöglich keine Tonausgabe; das Aufspringen bleibt das eigentliche Signal.
+  Bewusst P/Invoke statt `System.Media.SoundPlayer`: Das käme aus
+  `System.Windows.Extensions`, und ein weiteres NuGet-Paket ist in diesem Netz
+  teuer (§5, 403 auf `.nupkg`).
   3. **Der Filterzustand kommt ausschließlich aus dem Profil.** `HostFilterCollection`
      lädt im Viewer-Modus die persönliche `filter.json` gar nicht erst und persistiert
      nie; `StatusViewModel` ruft `ApplyPreset(v.ToHostFilter())` **bedingungslos** —

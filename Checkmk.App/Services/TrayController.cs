@@ -46,6 +46,10 @@ public sealed class TrayController
     /// </summary>
     private readonly bool _popUpOnProblem;
 
+    /// <summary>Warnton beim Aufspringen; leerer Dateiname = Systemklang.</summary>
+    private readonly bool _popUpSound;
+    private readonly string _popUpSoundFile;
+
     public TrayController(Application app, Window window, StatusViewModel status,
         IToastNotifier toast, ViewerMode viewer)
     {
@@ -54,6 +58,8 @@ public sealed class TrayController
         _status = status;
         _toast = toast;
         _popUpOnProblem = viewer.Profile?.PopUpOnProblem ?? false;
+        _popUpSound = viewer.Profile?.PopUpSound ?? false;
+        _popUpSoundFile = viewer.Profile?.PopUpSoundFile ?? "";
 
         // Tray-Icons zur Laufzeit rendern: App-Icon + farbiger Status-Dot unten
         // rechts. Damit bleibt im Tray erkennbar dass das der Checkmk Cockpit
@@ -177,6 +183,14 @@ public sealed class TrayController
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // Vor dem Hochholen, nicht danach: PlaySound kehrt sofort zurueck
+            // (asynchron), und so faellt der Ton mit dem Aufspringen zusammen
+            // statt erst nach dem Maximieren und dem Scrollen zu kommen.
+            if (_popUpSound && OperatingSystem.IsWindows())
+                AlertSound.PlayProblem(string.IsNullOrWhiteSpace(_popUpSoundFile)
+                    ? null
+                    : _popUpSoundFile);
+
             _restoreInProgress = true;
             try
             {
@@ -267,9 +281,12 @@ public sealed class TrayController
             // etwas erholt oder der Nutzer ausdruecklich Ruhe haben wollte.
             if (_popUpOnProblem && change.HasWorsened && SnoozedUntil is null)
             {
-                Log.Info("Viewer-Modus: Verschlechterung erkannt ({Text}) — hole Fenster nach vorn{Target}.",
+                Log.Info("Viewer-Modus: Verschlechterung erkannt ({Text}) — hole Fenster nach vorn{Target}{Sound}.",
                     change.ToText(),
-                    change.WorstNewProblem is { } p ? $" und springe auf {p.HostName}/{p.Description}" : "");
+                    change.WorstNewProblem is { } p ? $" und springe auf {p.HostName}/{p.Description}" : "",
+                    _popUpSound
+                        ? $", mit Ton ({(string.IsNullOrWhiteSpace(_popUpSoundFile) ? "Systemklang" : _popUpSoundFile)})"
+                        : "");
                 PopUpForProblem(change.WorstNewProblem);
             }
         }

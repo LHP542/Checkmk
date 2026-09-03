@@ -1120,6 +1120,37 @@ davon unberührt.
 > Fenster wird zuverlässig sichtbar und nach ganz oben geholt; ob es zusätzlich
 > den Fokus bekommt, entscheidet Windows.
 
+### `popUpSound` — Warnton beim Aufspringen
+
+Ein Bildschirm im Leitstand steht oft seitlich. Dass das Fenster aufgeht, sieht
+nur, wer gerade hinschaut — deshalb kann das Cockpit dazu einen kurzen Ton
+abspielen:
+
+```json
+"popUpOnProblem": true,
+"popUpSound": true
+```
+
+Ohne weitere Angabe kommt der **Systemklang „Hinweis"**. Er folgt dem
+Klangschema des Rechners, lässt sich also über die Windows-Sound-Einstellungen
+ändern, ohne das Profil anzufassen. Eigene Datei:
+
+```json
+"popUpSoundFile": "C:\\kiosk\\alarm.wav"
+```
+
+Vier Dinge dazu:
+
+| | |
+|---|---|
+| **Standard ist aus** | Sonst fängt jede bestehende Ausgabe nach einem Update ungefragt an zu piepen. |
+| **Der Ton hängt am Fenster** | Ohne `popUpOnProblem` gibt es auch keinen Ton — ein Geräusch ohne sichtbare Ursache ist schlimmer als keins. |
+| **Dieselben Regeln** | Kein Ton bei Recoveries, keiner bei aktivem Snooze. Was das Fenster nicht aufspringen lässt, macht auch keinen Lärm. |
+| **Kein Ton ist kein Fehler** | Rechner ohne Tonausgabe, Datei fehlt, kein WAV: Es steht eine Zeile im Log (Debug), und das Fenster kommt trotzdem. |
+
+Ist die eigene Datei nicht abspielbar, fällt das Cockpit auf den Systemklang
+zurück — wer einen Ton eingestellt hat, will einen hören.
+
 ### `map` — Standortkarte im Kiosk
 
 Für den Bildschirm im Leitstand oder beim Wachschutz: eine Stadtkarte, auf der
@@ -1167,7 +1198,8 @@ Und auf Debug-Ebene bei jedem Refresh, warum ein Toast/Popup kam oder eben nicht
 DEBUG|TrayController|Refresh-Diff: 3 Services (CRIT 1/WARN 0/UNK 0/OK 2),
 Aenderungen=1 (1 neues Problem), ImTray=false, Snooze=aus, PopUp=true.
 INFO |TrayController|Viewer-Modus: Verschlechterung erkannt (1 neues Problem) —
-hole Fenster nach vorn und springe auf TUER-CTRL02/Zutrittskontrolle.
+hole Fenster nach vorn und springe auf TUER-CTRL02/Zutrittskontrolle, mit Ton
+(Systemklang).
 ```
 
 | Feld | Default | Bedeutung |

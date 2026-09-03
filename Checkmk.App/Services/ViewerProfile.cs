@@ -247,6 +247,30 @@ public sealed class ViewerProfile
     /// </summary>
     public bool PopUpOnProblem { get; set; } = true;
 
+    /// <summary>
+    /// Zusaetzlich einen Warnton abspielen, wenn das Fenster deswegen nach vorn
+    /// kommt. Ein Bildschirm im Leitstand steht oft seitlich — dass das Fenster
+    /// aufgeht, sieht nur, wer gerade hinschaut.
+    ///
+    /// <para><b>Default false.</b> Sonst faengt jede bestehende Kiosk-Ausgabe
+    /// nach dem Update ungefragt an zu piepen — dieselbe Ueberlegung wie bei
+    /// <c>map.show</c>.</para>
+    ///
+    /// <para>Haengt am Aufspringen: Ohne <see cref="PopUpOnProblem"/> gibt es
+    /// auch keinen Ton. Er soll dasselbe melden wie das Fenster, nicht mehr —
+    /// ein Ton ohne sichtbare Ursache ist schlimmer als keiner.</para>
+    /// </summary>
+    public bool PopUpSound { get; set; }
+
+    /// <summary>
+    /// WAV-Datei fuer den Warnton. Leer = Systemklang „Hinweis", der dem
+    /// Klangschema des Rechners folgt.
+    ///
+    /// <para>Ist die Datei nicht abspielbar, wird auf den Systemklang
+    /// zurueckgefallen: Wer einen Ton eingestellt hat, will einen hoeren.</para>
+    /// </summary>
+    public string PopUpSoundFile { get; set; } = "";
+
     /// <summary>Voller Pfad der geladenen Datei (fuer Meldungen und die Über-Box).</summary>
     [JsonIgnore]
     public string FilePath { get; private set; } = "";
