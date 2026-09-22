@@ -48,7 +48,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public string UsernameLabel => IsUserBasic ? "Windows-/LDAP-Anmeldename" : "Automation-User";
     public string SecretLabel => IsUserBasic ? "Windows-Passwort (LDAP)" : "Automation-Secret";
     public string UsernameHint => IsUserBasic
-        ? $"Default: dein Windows-User ({Environment.UserName}). Damit taucht dein Name in Checkmks Audit-Log auf."
+        ? $"Default: dein Windows-User ({CurrentUser.Name}). Damit taucht dein Name in Checkmks Audit-Log auf."
         : "Dedizierter Automation-User (nicht personengebunden).";
     public string SecretHint => IsUserBasic
         ? "Dein AD-Passwort (nicht das GUI-Passwort eines Automation-Users). Wird DPAPI-verschlüsselt lokal gespeichert."
@@ -107,7 +107,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         Site = s.Site;
         AuthMode = s.AuthMode;
         // Bei erstmaliger Einrichtung (kein User gespeichert) Windows-User vorbelegen.
-        Username = string.IsNullOrWhiteSpace(s.Username) ? Environment.UserName : s.Username;
+        Username = string.IsNullOrWhiteSpace(s.Username) ? CurrentUser.Name : s.Username;
         UseHttps = s.UseHttps;
         IgnoreCertificateErrors = s.IgnoreCertificateErrors;
         Secret = _store.LoadSecret(s) ?? "";

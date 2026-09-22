@@ -10,7 +10,7 @@ public sealed class ConnectionSettings
 {
     public string Host { get; set; } = "";
     public string Site { get; set; } = "";
-    public string Username { get; set; } = Environment.UserName;
+    public string Username { get; set; } = CurrentUser.Name;
     public bool UseHttps { get; set; } = true;
     public bool IgnoreCertificateErrors { get; set; }
 

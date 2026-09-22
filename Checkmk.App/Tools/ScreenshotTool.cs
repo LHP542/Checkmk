@@ -80,6 +80,12 @@ internal static class ScreenshotTool
             return;
         }
 
+        // VOR dem ersten Fenster: Der Anmeldename steckt an mehreren Stellen in
+        // der Oberflaeche. Im ersten Lauf stand „Default: dein Windows-User
+        // (OsteL)" im eingecheckten Einstellungs-Bild — in einem oeffentlichen
+        // Repository. Siehe CurrentUser.
+        CurrentUser.UseDemoName("MeierS");
+
         Console.WriteLine($"Screenshots nach {dir}");
 
         // Je Bild einzeln abfangen: Ein Fenster, das sich verschluckt, darf
@@ -112,6 +118,10 @@ internal static class ScreenshotTool
         yield return ("filter-manager.png", DemoFilterManagerWindow, 780, 560);
         yield return ("filter-katalog.png", DemoCatalogDialog, 780, 600);
         yield return ("update.png", DemoUpdateDialog, 680, 620);
+        // Beide wegen abgeschnittener Knoepfe bzw. eines Rollbalkens auf dem
+        // Inhalt dazugekommen — genau die Fehlerklasse, die nur ein Bild zeigt.
+        yield return ("einstellungen.png", DemoSettingsWindow, 560, 640);
+        yield return ("about.png", DemoAboutWindow, 440, 400);
     }
 
     /// <summary>
@@ -277,5 +287,12 @@ internal static class ScreenshotTool
     /// </summary>
     private static Window DemoUpdateDialog()
         => new UpdateDialog(DemoData.UpdateInfo(), new UpdateInstaller());
+
+    private static Window DemoSettingsWindow()
+        => new SettingsWindow(DemoData.SettingsViewModel());
+
+    /// <summary>Der parameterlose ctor reicht — er setzt nur die Versionszeile;
+    /// die Knoepfe werden im Bild ohnehin nicht geklickt.</summary>
+    private static Window DemoAboutWindow() => new AboutWindow();
 }
 #endif

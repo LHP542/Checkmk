@@ -83,7 +83,7 @@ public sealed class DbHostDomainStore : IHostDomainStore
                 .GroupBy(h => h.Host, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First().Domain, StringComparer.OrdinalIgnoreCase);
 
-            var who = Environment.UserName;
+            var who = CurrentUser.Name;
             var now = DateTime.UtcNow;
 
             foreach (var (host, domain) in wanted)

@@ -150,6 +150,18 @@ internal static class DemoData
         return vm;
     }
 
+    // --- Einstellungen ----------------------------------------------------
+
+    /// <summary>
+    /// Das Einstellungsfenster mit erfundener Verbindung.
+    ///
+    /// <para><b>Das Kennwortfeld bleibt leer.</b> <see cref="FixedSettings"/>
+    /// liefert kein Secret — im Bild stehen sonst Sternchen, deren Anzahl die
+    /// Länge des echten Kennworts verrät.</para>
+    /// </summary>
+    internal static SettingsViewModel SettingsViewModel()
+        => new(new FixedSettings(), new NoClient());
+
     // --- Filter -----------------------------------------------------------
 
     /// <summary>
@@ -305,7 +317,10 @@ internal static class DemoData
         {
             Site = "Musterstadt",
             Host = "cmk.beispiel.intern",
-            Username = "cockpit"
+            Username = "MeierS",
+            AuthMode = Checkmk.Core.CheckmkAuthMode.UserBasic,
+            KnownSites = ["Musterstadt", "schulen"],
+            UseHttps = true
         };
         public string SettingsFilePath => "(demo)";
         public ConnectionSettings Load() => _s;

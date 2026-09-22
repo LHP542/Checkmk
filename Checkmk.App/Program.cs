@@ -319,7 +319,7 @@ internal static class Program
                 sp.GetRequiredService<IFilterStore>(),
                 sp.GetRequiredService<IFachbereichStore>(),
                 DatabaseConnection.FilterCachePath,
-                Environment.UserName));
+                CurrentUser.Name));
             services.AddSingleton<AreaViewModel>();
             services.AddSingleton<MapTileLoader>();
             services.AddSingleton<PotsdamPlaceImporter>();

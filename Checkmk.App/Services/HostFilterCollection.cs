@@ -51,7 +51,7 @@ public sealed class HostFilterCollection : ObservableObject
     public bool IsAdmin => _central?.IsAdmin ?? false;
 
     /// <summary>Anmeldename, gegen den die Autorschaft eines Filters geprüft wird.</summary>
-    public string UserName => _central?.UserName ?? Environment.UserName;
+    public string UserName => _central?.UserName ?? CurrentUser.Name;
 
     public string StatusHint => _central?.StatusHint ?? "Filter: lokal";
 

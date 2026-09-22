@@ -13,8 +13,11 @@
 
       <controls:TitleBar Grid.Row="0" Title="Checkmk-Verbindung" />
 
+      <!-- Der Rollbalken liegt in Avalonia ÜBER dem Inhalt, er schiebt ihn
+           nicht zur Seite. Ohne den rechten Rand saß er deshalb auf den
+           Eingabefeldern und dem Pfad darunter. 28 statt 16 lässt ihm Platz. -->
       <ScrollViewer Grid.Row="1">
-      <StackPanel Margin="16" Spacing="10">
+      <StackPanel Margin="16,16,28,16" Spacing="10">
         <StackPanel Spacing="3">
           <TextBlock Text="Host" />
           <TextBox Text="{Binding Host}" PlaceholderText="monitoring.lhp.intern" />

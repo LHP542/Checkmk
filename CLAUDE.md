@@ -1049,7 +1049,15 @@ werden mit erfundenen Daten gebaut, außerhalb des Bildschirms gezeigt und per
 `RenderTargetBitmap` gerendert. Sieben Punkte:
 1. **Erfundene Daten sind Pflicht, nicht Kosmetik.** Das Repository ist
    öffentlich; ein Bild aus dem Betrieb zeigt Hostnamen, `lhp.intern` und über
-   den Host-Alias die Anmeldenamen der Kollegen.
+   den Host-Alias die Anmeldenamen der Kollegen. **Der eigene Anmeldename
+   läuft über `CurrentUser.Name`**, das der Werkzeugmodus prozesslokal auf
+   einen Demowert setzt — er steckt an mehreren Stellen in der Oberfläche
+   (Vorgabe und Hinweistext im Verbindungsdialog, Name des Start-Filters,
+   Autorschaft an Filtern), und im ersten Lauf stand „Default: dein
+   Windows-User (OsteL)" im eingecheckten PNG. `Environment.UserName` direkt
+   zu benutzen ist deshalb ein Rückschritt; auf Windows liest es nicht die
+   Umgebungsvariable, sondern fragt `GetUserName` — ein
+   `SetEnvironmentVariable` im Werkzeug bewirkt also nichts.
 2. **Fenster, die beim Öffnen selbst nachladen, brauchen einen Schalter**
    (`HostDetailViewModel.AutoLoad`). Sonst überschreibt der Selbst-Load die
    eingesetzten Demodaten — bei bestehender Verbindung mit *echten* Werten.
