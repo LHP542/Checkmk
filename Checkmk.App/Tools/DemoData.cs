@@ -152,14 +152,20 @@ internal static class DemoData
 
     // --- Filter -----------------------------------------------------------
 
-    internal static HostFilterCollection FilterCollection()
+    /// <summary>
+    /// <paramref name="activeName"/> entscheidet, welcher Filter vorgewählt ist
+    /// — und das ist je Bild ein anderer: Die Statusansicht soll den vollen
+    /// Bestand zeigen („Alle"), der Filter-Manager den Alias-Filter, damit der
+    /// Umschalter „Regex vergleichen mit" im Bild etwas tut. Mit einer
+    /// gemeinsamen Vorauswahl stand im Statusbild nur ein Achtel der Zeilen,
+    /// während die Zähler darüber weiter von allen sprachen.
+    /// </summary>
+    internal static HostFilterCollection FilterCollection(string activeName = "Alle")
     {
         var store = new FixedFilters(new HostFilterState
         {
             Seeded = true,
-            // Der Alias-Filter ist vorgewählt — so zeigt das Bild, was der
-            // Umschalter „Regex vergleichen mit" tut.
-            ActiveFilterName = "MeierS",
+            ActiveFilterName = activeName,
             Filters =
             [
                 // Owner bleibt leer: `IsAuthor` fällt dann auf true zurück, der

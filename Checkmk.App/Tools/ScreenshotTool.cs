@@ -62,8 +62,24 @@ internal static class ScreenshotTool
     /// <summary>Läuft, sobald Avalonia steht — rendert alles und beendet den Prozess.</summary>
     internal static async void RunAsync()
     {
-        var dir = Path.GetFullPath(_outputDir ?? "docs");
-        Directory.CreateDirectory(dir);
+        // Der ganze Rumpf in einem try: Dies ist eine `async void`-Methode ohne
+        // Fenster, mit ShutdownMode.OnExplicitShutdown und dem UI-Waechter aus
+        // App darueber. Faellt hier etwas heraus — ein ungueltiger Zielordner
+        // reicht —, schluckt der Waechter es, niemand beendet den Prozess, und
+        // das Werkzeug haengt wortlos bis zum Abbruch.
+        string dir;
+        try
+        {
+            dir = Path.GetFullPath(_outputDir ?? "docs");
+            Directory.CreateDirectory(dir);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Zielordner '{_outputDir}' nicht nutzbar: {ex.Message}");
+            Environment.Exit(2);
+            return;
+        }
+
         Console.WriteLine($"Screenshots nach {dir}");
 
         // Je Bild einzeln abfangen: Ein Fenster, das sich verschluckt, darf
@@ -245,13 +261,21 @@ internal static class ScreenshotTool
     }
 
     private static Window DemoFilterManagerWindow()
-        => new FilterManagerWindow(DemoData.FilterCollection());
+        => new FilterManagerWindow(DemoData.FilterCollection("MeierS"));
 
     private static Window DemoCatalogDialog()
         => new FilterCatalogDialog(DemoData.Catalog(), [201], "MeierS",
             DemoData.KnownHosts(), isAdmin: false);
 
+    /// <summary>
+    /// Der Installer muss mitgegeben werden, sonst <b>fehlt der wichtigste
+    /// Knopf im Bild</b>: Ohne ihn blendet der Dialog „Jetzt installieren" aus
+    /// und macht „Release-Seite öffnen" zum Hauptknopf. Der Dialog holt sich
+    /// den Installer sonst aus <c>App.Services</c> — und das ist im
+    /// Werkzeugmodus bewusst <c>null</c>. Geklickt wird hier nichts, es wird
+    /// also auch nichts heruntergeladen.
+    /// </summary>
     private static Window DemoUpdateDialog()
-        => new UpdateDialog(DemoData.UpdateInfo());
+        => new UpdateDialog(DemoData.UpdateInfo(), new UpdateInstaller());
 }
 #endif

@@ -145,15 +145,49 @@ public static class ReleaseNotesFormatter
 
     /// <summary>
     /// Zerlegt eine Zeile in Stücke mit und ohne Fettung (<c>**…**</c>).
+    /// Backticks fallen dabei weg, ihr Inhalt bleibt.
     ///
-    /// <para><b>Eine unpaarige Markierung bleibt stehen, statt zu
-    /// verschwinden.</b> Vorher wurden die Sternchen in jedem Fall
-    /// weggeschnitten — aus dem Satz „samt <c>##</c> und <c>**</c>" wurde
-    /// „samt ## und ." Auf dem ersten Doku-Bild gut zu sehen. Wer über Markdown
-    /// schreibt, meint die Zeichen manchmal wörtlich; ohne sauberes Paar wird
-    /// deshalb gar nichts gedeutet.</para>
+    /// <para><b>Reihenfolge ist hier alles: erst Code-Spannen, dann Fettung.</b>
+    /// Andersherum wird aus einem wörtlich gemeinten <c>`**`</c> eine echte
+    /// Markierung — und weil die Zählung dann ungerade aufgeht, verliert der
+    /// <i>ganze</i> Absatz seine Fettung. Genau so stand im Doku-Bild
+    /// <c>**Das Markdown stand roh da**</c> mit sichtbaren Sternchen.</para>
+    ///
+    /// <para>Eine unpaarige Markierung bleibt stehen, statt zu verschwinden:
+    /// Wer über Markdown schreibt, meint die Zeichen manchmal wörtlich.</para>
     /// </summary>
     public static IReadOnlyList<(string Text, bool Bold)> Inline(string text)
+    {
+        // ZUERST die Code-Spannen. Was zwischen Backticks steht, ist woertlich
+        // gemeint — ein `**` darin sind zwei Sternchen, keine Fettung.
+        var spans = text.Split('`');
+
+        // Gerade Anzahl Segmente = ungerade Anzahl Backticks = kein sauberes
+        // Paar. Dann bleibt der Backtick stehen, statt stillschweigend zu
+        // verschwinden — dieselbe Regel wie bei der Fettung unten.
+        if (spans.Length % 2 == 0) return [.. Bold(text)];
+
+        var parts = new List<(string, bool)>();
+        for (var i = 0; i < spans.Length; i++)
+        {
+            if (spans[i].Length == 0) continue;
+
+            if (i % 2 == 1)
+                parts.Add((spans[i], false));   // Code: unangetastet durchreichen
+            else
+                parts.AddRange(Bold(spans[i]));
+        }
+
+        return parts.Count == 0 ? [(text, false)] : parts;
+    }
+
+    /// <summary>
+    /// Fettung innerhalb eines Stuecks <b>ohne</b> Code-Spannen.
+    ///
+    /// <para>Eine unpaarige Markierung bleibt stehen, statt zu verschwinden:
+    /// Wer ueber Markdown schreibt, meint die Zeichen manchmal woertlich.</para>
+    /// </summary>
+    private static IEnumerable<(string Text, bool Bold)> Bold(string text)
     {
         var segments = text.Split("**");
 
@@ -182,7 +216,15 @@ public static class ReleaseNotesFormatter
             ? s[2..]
             : s[(s.IndexOf('.') + 1)..].TrimStart());
 
-    /// <summary>Backticks raus — Inline-Code als eigene Schrift zu setzen wäre
-    /// in einem Absatz mehr Unruhe als Gewinn.</summary>
-    private static string Clean(string s) => s.Replace("`", "").Trim();
+    /// <summary>
+    /// Nur trimmen.
+    ///
+    /// <para><b>Die Backticks bleiben hier stehen</b> und verschwinden erst in
+    /// <see cref="Inline"/>. Sie vorher wegzuschneiden war der eigentliche
+    /// Fehler: Aus einem woertlich gemeinten <c>`**`</c> wurde dabei eine echte
+    /// Fettungs-Markierung, die Zaehlung ging ungerade auf, und der ganze
+    /// Absatz verlor seine Fettung — im Doku-Bild stand
+    /// <c>**Das Markdown stand roh da**</c> mit sichtbaren Sternchen.</para>
+    /// </summary>
+    private static string Clean(string s) => s.Trim();
 }

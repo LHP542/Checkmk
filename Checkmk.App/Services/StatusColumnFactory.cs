@@ -53,9 +53,12 @@ public static class StatusColumnFactory
         // Bewusst OHNE Alters-Einfaerbung: bei svc_check_age ist "frisch" gut und
         // "alt" schlecht — genau umgekehrt zu svc_state_age, wofuer AgeToBrush
         // gebaut ist. Rot fuer einen Check, der gerade eben lief, waere irrefuehrend.
+        // 130 statt 110: „Letzter Check" ist der laengste Kopf im Katalog und
+        // wurde bei 110 zu „Letzter Che" abgeschnitten. MinWidth, weil
+        // columns.json die Breite sonst ueberstimmt (siehe Check()).
         ["svc_check_age"] = new("Letzter Check", "Zeit seit letztem Check",
-            () => Text("Letzter Check", nameof(ServiceStatus.CheckAge), 110,
-                nameof(ServiceStatus.LastCheckUnix))),
+            () => Text("Letzter Check", nameof(ServiceStatus.CheckAge), 130,
+                nameof(ServiceStatus.LastCheckUnix), minWidth: 130)),
         ["svc_state_age"] = new("Alter Status", "Zeit seit Statuswechsel",
             () => AgeColumn("Alter Status", nameof(ServiceStatus.Age),
                 nameof(ServiceStatus.LastStateChange), nameof(ServiceStatus.LastStateChangeUnix)))
@@ -111,11 +114,12 @@ public static class StatusColumnFactory
     /// <summary><paramref name="sortPath"/> setzen, wenn der angezeigte Text nicht
     /// in seiner eigenen Reihenfolge sortiert werden darf (z. B. "3 h" vs. "5 m").</summary>
     private static DataGridTextColumn Text(string header, string path, double width,
-        string? sortPath = null) => new()
+        string? sortPath = null, double minWidth = 0) => new()
     {
         Header = header,
         Binding = new Binding(path),
         Width = new DataGridLength(width),
+        MinWidth = minWidth,
         SortMemberPath = sortPath ?? path
     };
 
@@ -133,12 +137,21 @@ public static class StatusColumnFactory
     /// und die Kopfzeilen-Polsterung. Bei 50 px blieb von „Ack" ein „A" und von
     /// „DT" ein „D" übrig — aufgefallen erst auf dem ersten Doku-Bild, weil man
     /// im Alltag weiß, was in der Spalte steht.</para>
+    ///
+    /// <para><b><see cref="DataGridColumn.MinWidth"/> ist der Teil, der wirkt.</b>
+    /// <c>Width</c> allein erreicht niemanden, der die App schon benutzt hat:
+    /// <c>StatusGridColumns.Apply</c> überschreibt sie mit dem Wert aus
+    /// <c>columns.json</c>, und dort stehen bei allen, die vor dieser Version
+    /// angefangen haben, die alten 50 px. Eine Untergrenze greift dagegen
+    /// unabhängig vom gespeicherten Stand — und schmaler als lesbar soll die
+    /// Spalte ohnehin nicht werden.</para>
     /// </summary>
     private static DataGridCheckBoxColumn Check(string header, string path) => new()
     {
         Header = header,
         Binding = new Binding(path),
-        Width = new DataGridLength(66)
+        Width = new DataGridLength(66),
+        MinWidth = 66
     };
 
     /// <summary>Ampelpunkt wie im XAML-Standardgrid.</summary>

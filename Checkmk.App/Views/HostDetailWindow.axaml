@@ -142,8 +142,9 @@
           <!-- 66 statt 50: Bei 50 px blieb vom Kopf „Ack" ein „A" uebrig (Sortierdreieck + Polsterung). -->
           <DataGridCheckBoxColumn Header="Ack" Binding="{Binding IsAcknowledged}" Width="66" />
           <DataGridCheckBoxColumn Header="DT" Binding="{Binding InDowntime}" Width="66" />
+          <!-- 130: bei 110 blieb „Letzter Che" stehen. -->
           <DataGridTextColumn Header="Letzter Check"
-                              Binding="{Binding LastCheck, StringFormat='{}{0:HH:mm:ss}'}" Width="110" />
+                              Binding="{Binding LastCheck, StringFormat='{}{0:HH:mm:ss}'}" Width="130" />
         </DataGrid.Columns>
       </DataGrid>
 

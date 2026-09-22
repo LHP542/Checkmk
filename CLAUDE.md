@@ -1046,7 +1046,7 @@ schiefging, statt es nur zu überleben.
 **Doku-Bilder entstehen aus der App selbst** (`Checkmk.App.exe --screenshots docs`,
 nur im Debug-Build, `Tools/ScreenshotTool.cs` + `Tools/DemoData.cs`). Die Fenster
 werden mit erfundenen Daten gebaut, außerhalb des Bildschirms gezeigt und per
-`RenderTargetBitmap` gerendert. Fünf Punkte:
+`RenderTargetBitmap` gerendert. Sieben Punkte:
 1. **Erfundene Daten sind Pflicht, nicht Kosmetik.** Das Repository ist
    öffentlich; ein Bild aus dem Betrieb zeigt Hostnamen, `lhp.intern` und über
    den Host-Alias die Anmeldenamen der Kollegen.
@@ -1063,7 +1063,20 @@ werden mit erfundenen Daten gebaut, außerhalb des Bildschirms gezeigt und per
    drei echte Fehler gezeigt, die kein Test findet: abgeschnittene
    Spaltenköpfe („A" statt „Ack", 50 px zu schmal), ein rohes `False` im
    Host-Kopf (`Ack`-Zeile, überflüssig neben dem Abzeichen) und ein
-   verschlucktes unpaariges `**` im Release-Notes-Formatierer.
+   verschlucktes unpaariges `**` im Release-Notes-Formatierer. Der **zweite**
+   Durchgang zeigte, dass zwei davon nur halb behoben waren — siehe die zwei
+   Punkte unten. Ein Bild anzusehen lohnt sich also auch nach dem Fix.
+6. **Eine neue Spaltenbreite erreicht Bestandsanwender nicht.**
+   `StatusGridColumns.Apply` überschreibt die Vorgabe aus
+   `StatusColumnFactory` mit dem Wert aus `columns.json`. Deshalb tragen die
+   betroffenen Spalten ein `MinWidth`, **und** `Apply` klemmt den gespeicherten
+   Wert per `Math.Max` dagegen. Beides zusammen, weil die Klemmung sonst von
+   Avalonias interner Korrektur abhinge.
+7. **Im Werkzeugmodus fehlt, was an `App.Services` hängt.** Der Container ist
+   dort `null` — der `UpdateDialog` blendete deshalb „Jetzt installieren" aus
+   und machte „Release-Seite öffnen" zum Hauptknopf. Ausgerechnet der Knopf,
+   um den es in den Release-Notes ging, fehlte im Bild. Abhängigkeiten also
+   ausdrücklich mitgeben, nicht auf den Container hoffen.
 Nicht auf UI-Fernsteuerung von außen umbauen (`SetForegroundWindow`,
 `mouse_event`, `PrintWindow`): Das ist aus Sicht der Verhaltens-AV das Muster
 eines RATs und wird auf dem Arbeitslaptop blockiert.

@@ -108,9 +108,17 @@ public class ReleaseNotesFormatterTests
             .Should().Contain(b => b.Kind == NoteBlockKind.Rule);
 
     [Fact]
-    public void Backticks_verschwinden_aus_dem_Fliesstext()
-        => ReleaseNotesFormatter.Parse("Die Datei `viewer.json` daneben.")
-            .Should().ContainSingle().Subject.Text.Should().Be("Die Datei viewer.json daneben.");
+    public void Backticks_verschwinden_erst_beim_Setzen()
+    {
+        // Parse laesst sie stehen — erst Inline entfernt sie. Andersherum ginge
+        // die Information verloren, dass der Inhalt woertlich gemeint war.
+        var block = ReleaseNotesFormatter.Parse("Die Datei `viewer.json` daneben.")
+            .Should().ContainSingle().Subject;
+        block.Text.Should().Be("Die Datei `viewer.json` daneben.");
+
+        var gesetzt = string.Concat(ReleaseNotesFormatter.Inline(block.Text).Select(p => p.Text));
+        gesetzt.Should().Be("Die Datei viewer.json daneben.");
+    }
 
     [Fact]
     public void Leere_Notes_ergeben_keine_Bloecke()
@@ -156,6 +164,46 @@ public class ReleaseNotesFormatterTests
     public void Text_ohne_Markierung_bleibt_ein_Stueck()
         => ReleaseNotesFormatter.Inline("Ganz normaler Satz.")
             .Should().ContainSingle().Subject.Should().Be(("Ganz normaler Satz.", false));
+
+    /// <summary>
+    /// <b>Der Fehler, der zweimal auf dem Doku-Bild stand.</b> Im Quelltext:
+    /// „**Das Markdown stand roh da**, in Schreibmaschinenschrift, samt `##`
+    /// und `**`." Wurden die Backticks vor der Fettung weggeschnitten, wurde aus
+    /// dem woertlich gemeinten `**` eine echte Markierung, die Zaehlung ging
+    /// ungerade auf — und der GANZE Absatz verlor seine Fettung, mit sichtbaren
+    /// Sternchen.
+    /// </summary>
+    [Fact]
+    public void Ein_woertliches_Sternchenpaar_in_Code_zerstoert_die_Fettung_nicht()
+    {
+        var parts = ReleaseNotesFormatter.Inline(
+            "**Das Markdown stand roh da**, in Schreibmaschinenschrift, samt `##` und `**`.");
+
+        parts.Should().Contain(p => p.Text == "Das Markdown stand roh da" && p.Bold);
+
+        var gesetzt = string.Concat(parts.Select(p => p.Text));
+        gesetzt.Should().Be(
+            "Das Markdown stand roh da, in Schreibmaschinenschrift, samt ## und **.");
+        gesetzt.Should().NotContain("**Das", "die Markierung gehoert nicht in die Anzeige");
+    }
+
+    /// <summary>Fettung und Code im selben Absatz stoeren sich nicht.</summary>
+    [Fact]
+    public void Fettung_neben_Code_funktioniert_weiter()
+    {
+        var parts = ReleaseNotesFormatter.Inline("**Pflicht**: die Datei `viewer.json`.");
+
+        parts.Should().Contain(p => p.Text == "Pflicht" && p.Bold);
+        parts.Should().Contain(p => p.Text == "viewer.json" && !p.Bold);
+    }
+
+    /// <summary>Ein einzelner Backtick ohne Gegenstueck bleibt sichtbar — das
+    /// ist ehrlicher, als stillschweigend ein Zeichen zu schlucken.</summary>
+    [Fact]
+    public void Ein_unpaariger_Backtick_bleibt_stehen()
+        => string.Concat(ReleaseNotesFormatter.Inline("Ein ` ohne Gegenstueck.")
+                .Select(p => p.Text))
+            .Should().Be("Ein ` ohne Gegenstueck.");
 
     /// <summary>Gegen die echten Notes: Der Dialog soll daraus etwas
     /// Lesbares machen, nicht eine Wand.</summary>

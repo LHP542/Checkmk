@@ -79,7 +79,16 @@ public static class StatusGridColumns
             {
                 column.IsVisible = setting.Visible;
                 if (setting.Width is > 0)
-                    column.Width = new DataGridLength(setting.Width.Value);
+                {
+                    // Nie unter die Untergrenze der Spalte. Der gespeicherte
+                    // Wert stammt aus einer frueheren Version und kann zu
+                    // schmal sein — bei „Ack"/„DT" standen so lange 50 px in
+                    // columns.json, dass vom Kopf nur „A" bzw. „D" uebrigblieb.
+                    // Eine neue Vorgabe in der Factory allein erreicht diese
+                    // Anwender nicht, weil genau diese Zeile sie ueberschreibt.
+                    column.Width = new DataGridLength(
+                        Math.Max(setting.Width.Value, column.MinWidth));
+                }
             }
             grid.Columns.Add(column);
         }
