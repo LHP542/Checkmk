@@ -82,6 +82,8 @@ Arbeitsgruppe funktioniert das ohne Zusatzkonfiguration.
 Beim ersten Start ist noch keine Verbindung eingerichtet — die Statusleiste zeigt
 „Nicht konfiguriert". Menüpunkt **„Einstellungen"** oben rechts.
 
+![Verbindungseinstellungen](docs/einstellungen.png)
+
 ### Anmeldemethode wählen
 
 Ganz oben im Dialog: **„Anmeldemethode"** mit zwei Optionen.
@@ -747,6 +749,19 @@ Bei neuerer Version erscheint in der Statusleiste ein gelbes Feld **„Update au
 - **Später** — Badge bleibt, beim nächsten Start wird wieder geprüft.
 - **Diese Version überspringen** — der Badge kommt erst wieder, wenn eine
   **noch neuere** Version rauskommt.
+
+### Manuell prüfen: die Über-Box
+
+![Über-Box](docs/about.png)
+
+**„Über"** oben rechts in der Titelleiste zeigt die installierte Version und
+hat drei Knöpfe:
+
+- **Nach Updates suchen** — prüft sofort, und zwar **ohne** die übersprungene
+  Version zu beachten. Wer eine Version einmal weggeklickt hat, kommt so wieder
+  an sie heran.
+- **Plugin-Updates…** — dasselbe für die Plugins im `plugins`-Ordner.
+- **GitHub** — öffnet das Repository im Browser.
 
 ---
 
