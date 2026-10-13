@@ -1357,6 +1357,34 @@ vergessenen Host zu bemerken; sonst taucht er schlicht nirgends auf.
 Ein **grauer Punkt** heißt „diesem Bereich sind keine Hosts zugeordnet" — bewusst
 nicht grün, denn ein leerer Bereich ist nicht dasselbe wie ein gesunder.
 
+### Quittierte Probleme färben nicht mehr rot
+
+Ein **CRIT, den jemand acknowledged hat, zählt hier als Warnung** — der Standort
+wird gelb statt rot. Der Punkt beantwortet nämlich nicht „welchen Status hat der
+Check", sondern **„liegt hier etwas, um das sich noch niemand kümmert"**. Ein
+Acknowledge sagt genau das Gegenteil: gesehen, jemand ist dran.
+
+Ohne diese Regel wäre die Karte nach dem ersten schlechten Tag durchgehend rot
+und sagte nichts mehr — und das Quittieren hätte sichtbar keine Wirkung.
+
+| Lage | Punkt |
+|---|---|
+| CRIT, nicht quittiert | **rot** |
+| CRIT, quittiert | **gelb** + Vermerk „quittiert" am Host |
+| CRIT quittiert **und** ein zweiter CRIT offen | **rot** |
+| WARN, quittiert | **gelb** (unverändert) |
+
+Zwei Dinge dazu:
+
+- **Gelb, nicht grün.** Das Problem besteht weiter, es ist nur in Arbeit — und
+  es zählt weiter als Problem in der Zahl daneben („1 Problem").
+- **Klappst du den Bereich auf**, steht beim betroffenen Host **„quittiert"**.
+  Sonst sähe ein quittierter Ausfall aus wie eine gewöhnliche Warnung.
+
+Die **Liste im Status-Tab bleibt unverändert**: Dort ist ein CRIT ein CRIT, und
+ob er quittiert ist, steht in der Spalte **Ack**. Auch Tray-Symbol und
+Benachrichtigungen bleiben, wie sie waren.
+
 ### Hosts zuordnen
 
 Zwei Wege, je nachdem wo du gerade bist:

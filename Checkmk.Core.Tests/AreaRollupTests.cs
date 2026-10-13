@@ -160,4 +160,87 @@ public class AreaRollupTests
 
         worst.ContainsKey("sql01").Should().BeTrue();
     }
+
+    // --- Quittierte Probleme ---------------------------------------------
+
+    private static ServiceStatus Svc(string host, int state, bool ack = false, string desc = "x")
+        => new() { HostName = host, Description = desc, State = state, Acknowledged = ack ? 1 : 0 };
+
+    /// <summary>
+    /// Der Kern: Die Bereichsfarbe beantwortet „liegt hier etwas, um das sich
+    /// noch niemand kuemmert". Ein Acknowledge heisst genau: jemand ist dran.
+    /// Bliebe der Standort rot, waere die Karte nach dem ersten schlechten Tag
+    /// durchgehend rot.
+    /// </summary>
+    [Fact]
+    public void Ein_quittierter_CRIT_zaehlt_als_WARN()
+        => AreaRollup.WorstStatePerHost([Svc("sql01", 2, ack: true)])["sql01"]
+            .Should().Be(ServiceState.Warning);
+
+    /// <summary>Nur bis WARN, nicht bis OK — das Problem besteht weiter.</summary>
+    [Fact]
+    public void Ein_quittierter_CRIT_wird_nicht_gruen()
+        => AreaRollup.WorstStatePerHost([Svc("sql01", 2, ack: true)])["sql01"]
+            .Should().NotBe(ServiceState.Ok);
+
+    [Fact]
+    public void Ein_offener_CRIT_bleibt_rot()
+        => AreaRollup.WorstStatePerHost([Svc("sql01", 2)])["sql01"]
+            .Should().Be(ServiceState.Critical);
+
+    /// <summary>Ein quittierter WARN bleibt WARN — ihn auf OK zu ziehen hiesse,
+    /// ihn verschwinden zu lassen.</summary>
+    [Fact]
+    public void Ein_quittierter_WARN_bleibt_WARN()
+        => AreaRollup.WorstStatePerHost([Svc("sw01", 1, ack: true)])["sw01"]
+            .Should().Be(ServiceState.Warning);
+
+    /// <summary>
+    /// Ein offener CRIT neben einem quittierten haelt den Host rot — sonst
+    /// verdeckte ein einziges Acknowledge den noch unbearbeiteten Ausfall.
+    /// </summary>
+    [Fact]
+    public void Ein_offener_CRIT_neben_einem_quittierten_bleibt_rot()
+    {
+        var worst = AreaRollup.WorstStatePerHost(
+        [
+            Svc("sql01", 2, ack: true, desc: "Backup"),
+            Svc("sql01", 2, desc: "Disk")
+        ]);
+
+        worst["sql01"].Should().Be(ServiceState.Critical);
+    }
+
+    [Fact]
+    public void Der_Bereich_wird_gelb_statt_rot_wenn_alles_quittiert_ist()
+    {
+        var result = AreaRollup.Compute(Tree, Assign(("h", 2)),
+            AreaRollup.WorstStatePerHost([Svc("h", 2, ack: true)]));
+
+        result[2].Worst.Should().Be(ServiceState.Warning);
+        result[1].Worst.Should().Be(ServiceState.Warning, "der Elternteil erbt den Status");
+        result[2].ProblemCount.Should().Be(1, "ein Problem ist es weiterhin");
+    }
+
+    // --- Der Vermerk „quittiert" -----------------------------------------
+
+    [Fact]
+    public void Quittierte_Hosts_werden_benannt()
+        => AreaRollup.HandledHosts([Svc("sql01", 2, ack: true)])
+            .Should().BeEquivalentTo(["sql01"]);
+
+    /// <summary>
+    /// Ein Host mit einem quittierten UND einem offenen CRIT ist nicht
+    /// „quittiert" — sein Punkt ist rot, und der Vermerk waere irrefuehrend.
+    /// </summary>
+    [Fact]
+    public void Ein_Host_mit_offenem_CRIT_gilt_nicht_als_quittiert()
+        => AreaRollup.HandledHosts(
+            [Svc("sql01", 2, ack: true, desc: "a"), Svc("sql01", 2, desc: "b")])
+            .Should().BeEmpty();
+
+    [Fact]
+    public void Ein_gesunder_Host_ist_nicht_quittiert()
+        => AreaRollup.HandledHosts([Svc("sql01", 0), Svc("sw01", 1, ack: true)])
+            .Should().BeEmpty("nur herabgestufte CRITs bekommen den Vermerk");
 }

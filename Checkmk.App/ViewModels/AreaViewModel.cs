@@ -145,12 +145,13 @@ public sealed partial class AreaViewModel : ViewModelBase
         RebuildIfChanged(snapshot);
 
         var worstPerHost = AreaRollup.WorstStatePerHost(services);
+        var handled = AreaRollup.HandledHosts(services);
         var aggregates = AreaRollup.Compute(VisibleAreas(snapshot), snapshot.HostToArea, worstPerHost);
 
         // Erst die Host-Listen, dann die Aggregate: Apply() vergleicht die Zahl
         // der zugeordneten Hosts mit der gefilterten, um „(3 zugeordnet)" zu
         // setzen — dafuer muss die Liste schon stehen.
-        FillAssignedHosts(snapshot, worstPerHost);
+        FillAssignedHosts(snapshot, worstPerHost, handled);
 
         foreach (var (areaId, node) in _byId)
             node.Apply(aggregates.GetValueOrDefault(areaId, AreaAggregate.Empty));
@@ -170,7 +171,8 @@ public sealed partial class AreaViewModel : ViewModelBase
     /// Filters stehen mit dem Vermerk „nicht im Filter" dabei, statt zu fehlen.
     /// </summary>
     private void FillAssignedHosts(AreaSnapshot snapshot,
-        IReadOnlyDictionary<string, ServiceState> worstPerHost)
+        IReadOnlyDictionary<string, ServiceState> worstPerHost,
+        IReadOnlySet<string> handled)
     {
         var perArea = new Dictionary<int, List<AreaHostViewModel>>();
 
@@ -181,7 +183,8 @@ public sealed partial class AreaViewModel : ViewModelBase
 
             var inFilter = worstPerHost.TryGetValue(host, out var state);
             (perArea.TryGetValue(areaId, out var list) ? list : perArea[areaId] = [])
-                .Add(new AreaHostViewModel(host, inFilter ? state : ServiceState.Unknown, inFilter));
+                .Add(new AreaHostViewModel(host, inFilter ? state : ServiceState.Unknown, inFilter,
+                    inFilter && handled.Contains(host)));
         }
 
         foreach (var (areaId, node) in _byId)

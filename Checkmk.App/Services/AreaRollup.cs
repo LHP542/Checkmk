@@ -127,7 +127,35 @@ public static class AreaRollup
     }
 
     /// <summary>
-    /// Schlechtester Service-Status je Host. CRIT &gt; WARN &gt; UNKNOWN &gt; OK —
+    /// Status eines Service, <b>wie er für die Bereichsfarbe zählt</b>.
+    ///
+    /// <para><b>Ein quittierter CRIT zählt als WARN.</b> Die Farbe eines
+    /// Bereichs beantwortet nicht „welchen Status hat der Check", sondern
+    /// „liegt hier etwas, um das sich noch niemand kümmert". Ein Acknowledge
+    /// heißt genau: gesehen, jemand ist dran. Bleibt der Standort danach rot,
+    /// ist die Karte nach dem ersten schlechten Tag durchgehend rot und sagt
+    /// nichts mehr — und das Quittieren, das in Checkmk genau dafür da ist,
+    /// hätte sichtbar keine Wirkung.</para>
+    ///
+    /// <para>Herabgestuft wird nur bis WARN, <b>nicht bis OK</b>: Das Problem
+    /// besteht weiter, es ist nur in Arbeit. Grün wäre eine Lüge.</para>
+    ///
+    /// <para><b>Nur CRIT wird herabgestuft.</b> Ein quittierter WARN bleibt
+    /// WARN — ihn auf OK zu ziehen hieße, ihn verschwinden zu lassen, und
+    /// damit wäre der Bereich grün, obwohl etwas offen ist.</para>
+    ///
+    /// <para>Die <b>Liste</b> im Status-Tab zeigt weiterhin den echten Status;
+    /// dort steht die Quittierung in einer eigenen Spalte, und „CRIT ist CRIT"
+    /// ist die richtige Antwort auf die Frage, die eine Statusliste stellt.</para>
+    /// </summary>
+    public static ServiceState EffectiveState(ServiceStatus service)
+        => service.ServiceState == ServiceState.Critical && service.IsAcknowledged
+            ? ServiceState.Warning
+            : service.ServiceState;
+
+    /// <summary>
+    /// Schlechtester Service-Status je Host — nach <see cref="EffectiveState"/>,
+    /// also mit herabgestuften quittierten CRITs. CRIT &gt; WARN &gt; UNKNOWN &gt; OK,
     /// dieselbe Reihenfolge wie im Host-Baum des Status-Tabs.
     /// </summary>
     public static Dictionary<string, ServiceState> WorstStatePerHost(
@@ -136,12 +164,39 @@ public static class AreaRollup
         var worst = new Dictionary<string, ServiceState>(StringComparer.OrdinalIgnoreCase);
         foreach (var s in services)
         {
+            var state = EffectiveState(s);
             if (worst.TryGetValue(s.HostName, out var current)
-                && Severity(current) >= Severity(s.ServiceState))
+                && Severity(current) >= Severity(state))
                 continue;
-            worst[s.HostName] = s.ServiceState;
+            worst[s.HostName] = state;
         }
         return worst;
+    }
+
+    /// <summary>
+    /// Hosts, deren Punkt nur deshalb nicht rot ist, weil der CRIT quittiert
+    /// wurde.
+    ///
+    /// <para>Ohne diese Angabe wäre die Herabstufung eine stille: Ein
+    /// quittierter Ausfall sähe in der Bereichsliste genauso aus wie eine echte
+    /// Warnung. Die Host-Zeile schreibt deshalb „quittiert" dazu.</para>
+    /// </summary>
+    public static HashSet<string> HandledHosts(IEnumerable<ServiceStatus> services)
+    {
+        var handled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var unhandled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var s in services)
+        {
+            if (s.ServiceState != ServiceState.Critical) continue;
+            (s.IsAcknowledged ? handled : unhandled).Add(s.HostName);
+        }
+
+        // Ein Host mit einem quittierten UND einem offenen CRIT ist nicht
+        // „quittiert" — sein Punkt ist weiterhin rot, und der Vermerk waere
+        // dann irrefuehrend.
+        handled.ExceptWith(unhandled);
+        return handled;
     }
 
     /// <summary>UNKNOWN zaehlt schwerer als OK, aber leichter als WARN — ein

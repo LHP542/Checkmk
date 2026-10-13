@@ -136,7 +136,7 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   Anlegen/Umbenennen/Löschen, Unterbereiche, Zuweisung per Mehrfachauswahl
   (`HostMultiSelectDialog` mit Freitextfilter — 1105 Hosts einzeln zuzuweisen
   ist keine Option) sowie „Bereich zuweisen…" im Kontextmenü des Status-Tabs.
-  Vier Punkte, die nicht wegoptimiert werden dürfen:
+  Fünf Punkte, die nicht wegoptimiert werden dürfen:
   1. **Die Host-Menge IST die Linse.** `AreaRollup.Compute` bekommt nur die
      Hosts, die auf den aktiven Filter passen; im Rollup wird **nicht** noch
      einmal gefiltert. Genau daher ist derselbe Serverraum für das DB-Team grün
@@ -151,6 +151,28 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      zurück statt Unterbereiche mitzulöschen oder Hosts stillschweigend
      freizusetzen. `AreaRollup` schützt zusätzlich per `visited`-Satz gegen einen
      Zyklus im Baum — die Datenbank verhindert ihn nicht, ein `UPDATE` reicht.
+  5. **Ein quittierter CRIT zählt als WARN** (`AreaRollup.EffectiveState`). Die
+     Bereichsfarbe beantwortet nicht „welchen Status hat der Check", sondern
+     „liegt hier etwas, um das sich noch niemand kümmert" — und ein
+     Acknowledge heißt genau: gesehen, jemand ist dran. Bliebe der Standort
+     rot, wäre die Karte nach dem ersten schlechten Tag durchgehend rot und
+     sagte nichts mehr; das Quittieren, das in Checkmk für diesen Zweck da ist,
+     hätte sichtbar keine Wirkung. Vier Punkte dazu:
+     - **Nur bis WARN, nie bis OK.** Das Problem besteht weiter, es ist nur in
+       Arbeit. Grün wäre eine Lüge, und `ProblemCount` zählt es weiter mit.
+     - **Nur CRIT wird herabgestuft.** Ein quittierter WARN bleibt WARN — ihn
+       auf OK zu ziehen hieße, ihn verschwinden zu lassen.
+     - **Ein offener CRIT neben einem quittierten hält den Host rot.** Sonst
+       verdeckte ein einziges Acknowledge den noch unbearbeiteten Ausfall.
+     - **Die Herabstufung ist sichtbar**, nicht still: Die Host-Zeile im
+       aufgeklappten Bereich schreibt „quittiert" dazu (`HandledHosts`,
+       `AreaHostViewModel.IsHandled`). Ohne den Vermerk sähe ein quittierter
+       Ausfall aus wie eine gewöhnliche Warnung.
+     **Die Liste im Status-Tab bleibt unberührt** — dort ist „CRIT ist CRIT"
+     die richtige Antwort, und die Quittierung steht ohnehin in einer eigenen
+     Spalte. Tray-Symbol und Benachrichtigungen ebenfalls: Sie hängen an
+     `StatusChangeMonitor`, und eine Herabstufung dort würde Alarme
+     unterdrücken statt nur eine Farbe zu ändern.
   Der Sammelknoten **„Ohne Bereich"** ist kein Datensatz (`AreaId = -1`), sondern
   die Restmenge — die Arbeitsliste beim Zuordnen und der einzige Weg, einen
   vergessenen Host überhaupt zu bemerken.
