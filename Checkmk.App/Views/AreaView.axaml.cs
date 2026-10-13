@@ -264,6 +264,18 @@ public partial class AreaView : UserControl
     /// Deshalb hier voll gesättigte Signalfarben. Sie sehen für sich genommen
     /// grell aus; das ist der Preis dafür, dass sie auf jedem Untergrund als
     /// Ampel gelesen werden.
+    ///
+    /// <para><b>UNKNOWN ist bewusst KEINE Signalfarbe.</b> Hier stand einmal
+    /// Magenta (<c>#D500F9</c>) — als Ausweichfarbe, weil Grau auf der Karte
+    /// schon „keine Hosts zugeordnet" bedeutet. Das war in zwei Hinsichten
+    /// falsch: Es stand in keiner Legende und wurde prompt für einen Fehler
+    /// gehalten („Pink?"), und es war <i>greller als Rot</i> — ein Check, der
+    /// nichts meldet, zog damit mehr Blicke auf sich als ein echter Ausfall.
+    /// Im Rollup zählt UNKNOWN ausdrücklich leichter als WARN
+    /// (<c>AreaRollup.Severity</c>); die Farbe folgt dem jetzt.</para>
+    ///
+    /// <para>Das gedämpfte Grau-Blau unterscheidet sich klar vom neutralen
+    /// „leer"-Grau, ohne in der Ampel mitzuspielen.</para>
     /// </summary>
     private static Color ColorFor(AreaNodeViewModel node) => node.IsEmptyOfHosts
         ? Color.FromRgb(0xB0, 0xB0, 0xB0)
@@ -271,7 +283,7 @@ public partial class AreaView : UserControl
         {
             ServiceState.Critical => Color.FromRgb(0xFF, 0x17, 0x17),
             ServiceState.Warning => Color.FromRgb(0xFF, 0xB3, 0x00),
-            ServiceState.Unknown => Color.FromRgb(0xD5, 0x00, 0xF9),
+            ServiceState.Unknown => Color.FromRgb(0x8F, 0xA8, 0xC0),
             _ => Color.FromRgb(0x00, 0xE6, 0x4D)
         };
 

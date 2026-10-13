@@ -454,6 +454,14 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   Laub — die dunkle Unterlage gibt ihm auf jedem Untergrund eine Kante. Marker
   haben zusätzlich einen hellen Kern. Nicht auf „einheitlich mit dem Baum"
   zurückdrehen: Die beiden Untergründe sind nicht vergleichbar.
+  **UNKNOWN ist dabei bewusst keine Signalfarbe** (`#8FA8C0`, gedämpftes
+  Grau-Blau). Dort stand bis v1.21.0 Magenta `#D500F9` — als Ausweichfarbe,
+  weil Grau auf der Karte schon „keine Hosts zugeordnet" bedeutet. Zwei Fehler
+  darin: Es stand in keiner Legende und wurde prompt für einen Fehler gehalten
+  („Pink?"), und es war **greller als Rot** — ein Check, der nichts meldet, zog
+  mehr Blicke auf sich als ein echter Ausfall. Im Rollup zählt UNKNOWN
+  ausdrücklich leichter als WARN (`AreaRollup.Severity`); die Farbe folgt dem
+  jetzt. Grau bleibt für „leer" reserviert, deshalb nicht einfach grau nehmen.
   **Sechs Hintergründe umschaltbar** (`GlobalSetting.MapLayers`, alle einzeln
   gegen die Dienste verifiziert, Zoom 18 über dem Rathaus):
 

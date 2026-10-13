@@ -1376,6 +1376,29 @@ vergessenen Host zu bemerken; sonst taucht er schlicht nirgends auf.
 gemeint sind — mit Ampelpunkt, und per Doppelklick direkt in die Host-Details.
 „35 Hosts" zu lesen, ohne zu sehen welche, hilft beim Zuordnen nicht weiter.
 
+### Die Farben
+
+Baum und Karte zeigen denselben Zustand, die Karte nur kräftiger — auf einem
+Luftbild konkurriert ein abgetöntes Rot mit Ziegeldächern.
+
+| Farbe | heißt | im Baum |
+|---|---|---|
+| 🟢 Grün | alle Hosts OK | grün |
+| 🟡 Gelb | schlimmstenfalls WARN (oder ein **bekannter** CRIT, siehe unten) | gelb |
+| 🔴 Rot | mindestens ein unbearbeiteter CRIT | rot |
+| 🔵 Grau-blau | schlimmstenfalls **UNKNOWN** — ein Check meldet gar nichts | grau |
+| ⚪ Grau | **keine Hosts zugeordnet** | grau |
+
+Die beiden letzten sind zwei verschiedene Lagen und deshalb auf der Karte
+unterscheidbar: „ein Check sagt nichts" ist etwas anderes als „hier steht
+nichts". Im Baum sind beide grau — dort steht die Zahl daneben („leer" bzw.
+„8 Hosts"), und die klärt es.
+
+**UNKNOWN ist absichtlich keine Signalfarbe.** Ein Check, der nichts meldet,
+ist ein Hinweis und kein Alarm; er zählt auch im Rollup leichter als eine
+Warnung. (Bis v1.21.0 stand hier Magenta — greller als Rot, in keiner Legende
+erklärt, und prompt für einen Fehler gehalten.)
+
 Ein **grauer Punkt** heißt „diesem Bereich sind keine Hosts zugeordnet" — bewusst
 nicht grün, denn ein leerer Bereich ist nicht dasselbe wie ein gesunder.
 
