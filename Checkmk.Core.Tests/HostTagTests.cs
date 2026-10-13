@@ -257,4 +257,51 @@ public class HostTagTests
         s.CurrentAreaName.Should().Be("Haus 2");
         s.Note.Should().Contain("verschiebt").And.Contain("Tag");
     }
+
+    // --- „Speichern und zuordnen": Vorschlaege eines einzelnen Bereichs ----
+
+    /// <summary>
+    /// Der Fall, der den Knopf noetig gemacht hat: Ein Bereich bekommt seinen
+    /// Ortstag, der Dialog meldet Treffer — und der Bereich bleibt leer, weil
+    /// das Sichern der Regel nichts zuordnet. Die Vorschlaege fuer genau
+    /// diesen Bereich muessen danach die Treffer enthalten.
+    /// </summary>
+    [Fact]
+    public void Ein_frisch_getaggter_Bereich_hat_Vorschlaege()
+    {
+        var areas = new[] { Area(52, "Nord Gymnasium", tag: "schule_52") };
+        string[] hosts = ["52-SW01", "52-USV", "ESX52-01", "fremd-01"];
+
+        var fuerBereich = AreaAssignmentSuggester
+            .Suggest(areas, hosts, Nothing,
+                h => h.StartsWith("fremd", StringComparison.Ordinal) ? null : "schule_52")
+            .Where(s => s.AreaId == 52)
+            .ToList();
+
+        fuerBereich.Select(s => s.HostName)
+            .Should().BeEquivalentTo(["52-SW01", "52-USV", "ESX52-01"]);
+    }
+
+    /// <summary>
+    /// Die Einschraenkung auf einen Bereich darf erst <b>nach</b> dem vollen
+    /// Lauf greifen. Sonst fiele die Regel „trifft mehr als ein Bereich,
+    /// gewinnt keiner" weg, und ein umstrittener Host wuerde diesem Bereich
+    /// still zugeschlagen.
+    /// </summary>
+    [Fact]
+    public void Ein_umstrittener_Host_kommt_mit_Konfliktvermerk_mit()
+    {
+        var areas = new[]
+        {
+            Area(52, "Nord Gymnasium", tag: "schule_52"),
+            Area(53, "Aussenstelle", tag: "schule_52")
+        };
+
+        var alle = AreaAssignmentSuggester.Suggest(areas, ["52-SW01"], Nothing, _ => "schule_52");
+        var fuerBereich = alle.Where(s => s.AreaId == 52).ToList();
+
+        fuerBereich.Should().ContainSingle().Which.IsAmbiguous.Should().BeTrue(
+            "der zweite Bereich beansprucht denselben Host");
+        fuerBereich[0].ConflictingAreas.Should().Contain("Aussenstelle");
+    }
 }

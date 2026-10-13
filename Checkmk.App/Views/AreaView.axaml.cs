@@ -464,6 +464,42 @@ public partial class AreaView : UserControl
 
         await vm.SaveAssignmentRuleAsync(node.AreaId, rule.Tag, rule.Pattern);
         RefreshMap();
+
+        if (rule.AssignNow)
+            await SuggestForAreaAsync(vm, owner, node.AreaId, node.Name);
+    }
+
+    /// <summary>
+    /// Zeigt die Vorschläge für genau einen Bereich — der zweite Schritt von
+    /// „Speichern und zuordnen".
+    ///
+    /// <para>Die Regel am Bereich zu sichern ordnet noch nichts zu; das
+    /// passiert erst hier, und erst nach Bestätigung. Ohne diesen Weg musste
+    /// man den Dialog schließen und „Zuordnung vorschlagen…" in der Leiste
+    /// finden — ein Schritt, den der Dialog mit „Treffer (7)" nicht ankündigt.
+    /// Real passiert: Ein Bereich bekam seinen Ortstag und blieb leer, was wie
+    /// ein Fehler aussah.</para>
+    /// </summary>
+    private async Task SuggestForAreaAsync(AreaViewModel vm, Window owner,
+        int areaId, string areaName)
+    {
+        var suggestions = vm.SuggestAssignmentsFor(areaId);
+        if (suggestions.Count == 0)
+        {
+            // Der haeufigste Fall ist nicht „Regel falsch", sondern „passt
+            // schon" — deshalb beides benennen statt nur „keine Vorschlaege".
+            vm.StatusMessage = $"{areaName}: nichts zuzuordnen — entweder stehen die "
+                             + "Treffer schon in diesem Bereich, oder kein Host im "
+                             + "aktiven Filter passt auf die Regel.";
+            return;
+        }
+
+        var dialog = new AssignSuggestionDialog(suggestions);
+        if (await dialog.ShowDialog<IReadOnlyList<AssignmentSuggestion>?>(owner)
+            is not { Count: > 0 } accepted) return;
+
+        await vm.ApplySuggestionsAsync(accepted);
+        RefreshMap();
     }
 
     /// <summary>

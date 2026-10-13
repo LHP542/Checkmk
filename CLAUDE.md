@@ -285,6 +285,23 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      durchsehen. Vorausgewählt sind nur die **eindeutigen neuen**; Hosts, die
      schon woanders stehen oder auf mehrere Muster passen, bleiben eine bewusste
      Entscheidung.
+
+     **Der Preis dieser Regel ist ein zweiter Schritt, und der war
+     unauffindbar.** `SaveAssignmentRuleAsync` schreibt nur `Area.HostTag` und
+     `Area.HostPattern` — zugeordnet wird erst über „Zuordnung vorschlagen…".
+     Dem Dialog sieht man das nicht an: Er heißt „Host-Zuordnung", fragt
+     „Welche Hosts gehören zu …?" und listet „Treffer (7)". Real passiert
+     (2026-10-13): Ein Bereich bekam `schule_52`, der Dialog meldete 7 Treffer,
+     der Bereich blieb leer — gemeldet als Fehler, und die Meldung war
+     berechtigt. Deshalb **„Speichern und zuordnen"** (`HostAssignmentRule.AssignNow`
+     → `AreaView.SuggestForAreaAsync`): Es sichert die Regel und öffnet sofort
+     den Vorschlagsdialog für genau diesen Bereich. **Die Bestätigung bleibt** —
+     der Knopf überspringt nur das *Suchen* des zweiten Schritts, nicht den
+     Schritt. Und `SuggestAssignmentsFor` filtert aus dem **vollen** Lauf
+     heraus, statt eine zweite Suchlogik zu bauen: Nur so gilt weiterhin
+     „trifft mehr als ein Bereich, gewinnt keiner", und ein umstrittener Host
+     kommt mit Konflikt-Vermerk mit, statt still diesem Bereich zugeschlagen zu
+     werden.
   3. **Handgepflegte Muster überleben den Reimport.** `ExternalCode` steht
      neben `HostPattern`: Nur wenn sich der Code ändert oder noch kein Muster
      da ist, wird neu abgeleitet.

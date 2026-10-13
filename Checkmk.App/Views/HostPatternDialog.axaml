@@ -40,12 +40,22 @@
 
       <ListBox Grid.Row="3" Name="MatchList" Margin="16,0,16,0" />
 
-      <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
-                  Margin="16" Spacing="8">
+      <!-- „Speichern" merkt nur die Regel. Dass danach noch „Zuordnung
+           vorschlagen…" kommt, sieht man dem Dialog nicht an — er heißt
+           „Host-Zuordnung" und zeigt die Treffer. Deshalb der zweite Knopf,
+           der beides hintereinander macht. Die Bestätigung bleibt: Er
+           überspringt nur das Suchen des zweiten Schritts.
+           WrapPanel, weil vier Knöpfe mit diesen Beschriftungen nicht in jede
+           Fensterbreite passen. -->
+      <WrapPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
+                 Margin="16" ItemSpacing="8" LineSpacing="8">
         <Button Content="Muster entfernen" Click="OnClearClick" />
-        <Button Content="Speichern" Click="OnOkClick" Background="#123E6B" IsDefault="True" />
+        <Button Content="Speichern" Click="OnOkClick" />
+        <Button Content="Speichern und zuordnen" Click="OnOkAndAssignClick"
+                Background="#123E6B" IsDefault="True"
+                ToolTip.Tip="Merkt die Regel und zeigt sofort die Zuordnungsvorschläge für diesen Bereich — übernommen wird erst nach deiner Bestätigung." />
         <Button Content="Abbrechen" Click="OnCancelClick" IsCancel="True" />
-      </StackPanel>
+      </WrapPanel>
     </Grid>
   </Border>
 </controls:ChromeWindow>

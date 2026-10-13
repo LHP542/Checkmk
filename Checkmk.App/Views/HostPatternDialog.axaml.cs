@@ -13,7 +13,22 @@ namespace Checkmk.App.Views;
 /// <summary>Ergebnis des Dialogs. <c>null</c> = abgebrochen.</summary>
 /// <param name="Tag">Checkmk-Ortstag, oder <c>null</c> für „keiner".</param>
 /// <param name="Pattern">Hostname-Regex, oder <c>null</c> für „keins".</param>
-public sealed record HostAssignmentRule(string? Tag, string? Pattern);
+/// <param name="AssignNow">
+/// Der Anwender hat „Speichern und zuordnen" gewählt: Nach dem Sichern der
+/// Regel soll gleich der Vorschlagsdialog für diesen Bereich aufgehen.
+///
+/// <para><b>Warum es diesen Knopf gibt:</b> „Speichern" merkt nur die Regel —
+/// zugeordnet wird erst über „Zuordnung vorschlagen…" in der Leiste. Das steht
+/// dem Dialog nicht an: Er heißt „Host-Zuordnung", fragt „Welche Hosts gehören
+/// zu …?" und zeigt die Treffer. Real passiert: Ein Bereich bekam seinen
+/// Ortstag, der Dialog meldete 7 Treffer, und der Bereich blieb leer — was
+/// nach einem Fehler aussieht und keiner war.</para>
+///
+/// <para>Die Bestätigung bleibt trotzdem: Der Knopf überspringt nur das
+/// <i>Suchen</i> des zweiten Schritts, nicht den Schritt selbst. „Nur
+/// Vorschläge, nie automatisch" gilt weiter.</para>
+/// </param>
+public sealed record HostAssignmentRule(string? Tag, string? Pattern, bool AssignNow = false);
 
 /// <summary>
 /// Wie ein Bereich zu seinen Hosts kommt — <b>Checkmk-Ortstag</b> oder
@@ -181,12 +196,18 @@ public partial class HostPatternDialog : ChromeWindow
         UpdatePreview();
     }
 
-    private void OnOkClick(object? sender, RoutedEventArgs e)
+    private void OnOkClick(object? sender, RoutedEventArgs e) => CloseWithRule(assignNow: false);
+
+    private void OnOkAndAssignClick(object? sender, RoutedEventArgs e)
+        => CloseWithRule(assignNow: true);
+
+    private void CloseWithRule(bool assignNow)
     {
         var pattern = this.FindControl<TextBox>("PatternBox")!.Text?.Trim();
         Close(new HostAssignmentRule(
             SelectedTag,
-            string.IsNullOrWhiteSpace(pattern) ? null : pattern));
+            string.IsNullOrWhiteSpace(pattern) ? null : pattern,
+            assignNow));
     }
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);

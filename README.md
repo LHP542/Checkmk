@@ -1441,6 +1441,16 @@ Hier trägst du auch die beiden Schulen nach, die im offenen Schulverzeichnis
 fehlen: **`schule_61`** (28 Hosts) und **`schule_63`** (10 Hosts). Bereich
 anlegen, Tag aus der Liste wählen, speichern.
 
+> **Wichtig:** **„Speichern" merkt nur die Regel — es ordnet nichts zu.** Die
+> Trefferliste im Dialog ist eine Vorschau. Wer das übersieht, wundert sich:
+> Der Dialog meldet 7 Treffer, und der Bereich bleibt leer.
+>
+> Deshalb gibt es daneben **„Speichern und zuordnen"**: Das sichert die Regel
+> und zeigt sofort die Vorschläge für genau diesen Bereich. Übernommen wird
+> auch dann erst nach deiner Bestätigung — ein Muster kann danebenliegen, und
+> tausend falsche Zuordnungen hinterher aufzuräumen ist teurer als einmal
+> durchsehen.
+
 #### Und dann zuordnen
 
 **„Zuordnung vorschlagen…"** zeigt jeden Treffer mit Zielbereich und Notiz:

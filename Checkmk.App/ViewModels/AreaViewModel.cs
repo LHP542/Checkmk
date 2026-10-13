@@ -539,6 +539,19 @@ public sealed partial class AreaViewModel : ViewModelBase
         => [.. _status.AllServices.Select(s => s.HostName)
                                   .Distinct(StringComparer.OrdinalIgnoreCase)];
 
+    /// <summary>
+    /// Zuordnungsvorschläge, die <b>diesen einen</b> Bereich betreffen — für
+    /// „Speichern und zuordnen" direkt nach dem Setzen seiner Regel.
+    ///
+    /// <para>Gefiltert wird aus dem vollen Lauf heraus, nicht mit einer
+    /// zweiten Suchlogik: Nur so gilt weiterhin „trifft mehr als ein Bereich,
+    /// gewinnt keiner". Ein Host, den auch ein anderer Bereich beansprucht,
+    /// kommt also mit dem Konflikt-Vermerk mit, statt hier stillschweigend
+    /// diesem Bereich zugeschlagen zu werden.</para>
+    /// </summary>
+    public IReadOnlyList<AssignmentSuggestion> SuggestAssignmentsFor(int areaId)
+        => [.. SuggestAssignments().Where(s => s.AreaId == areaId)];
+
     /// <summary>Zuordnungsvorschläge aus den Mustern der sichtbaren Bereiche.</summary>
     public IReadOnlyList<AssignmentSuggestion> SuggestAssignments()
     {
