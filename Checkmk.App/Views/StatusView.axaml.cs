@@ -233,6 +233,17 @@ public partial class StatusView : UserControl
     private async void OnAcknowledgeClick(object? sender, RoutedEventArgs e)
         => await ShowActionAsync(ServiceActionMode.Acknowledge);
 
+    /// <summary>
+    /// Nimmt die Quittierung der markierten Services zurück — ohne Dialog, weil
+    /// es nichts einzugeben gibt und die Aktion folgenlos wiederholbar ist.
+    /// Funktioniert in Tabelle und Baum über dieselbe Ziel-Auflösung wie Ack.
+    /// </summary>
+    private async void OnRemoveAckClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not StatusViewModel vm || !vm.CanWrite) return;
+        await vm.PerformRemoveAcknowledgementAsync(GetTargetServices());
+    }
+
     private async void OnDowntimeClick(object? sender, RoutedEventArgs e)
         => await ShowActionAsync(ServiceActionMode.Downtime);
 

@@ -164,6 +164,24 @@ kosten. Hier eine Zeile wählen und ein Menü öffnen.
 3. Kommentar eingeben — **Pflicht** (Checkmk-Vorgabe).
 4. **OK** — die Warnung ist quittiert. In der „Ack"-Spalte steht ein Haken.
 
+### Quittierung wieder entfernen
+
+**Rechtsklick → „Ack entfernen"** im Status-Tab, oder im Host-Detail-Fenster
+der Knopf **„Ack entfernen"** (für markierte Services) bzw.
+**„Host-Ack entfernen"**. Kein Dialog — es gibt nichts einzugeben, und wenn du
+daneben greifst, quittierst du einfach neu.
+
+> **Den Kommentar zu löschen reicht nicht.** Beim Quittieren legt Checkmk
+> zusätzlich einen Kommentar an. Das sind zwei Dinge: Der Kommentar ist die
+> Notiz dazu, die **Quittierung hängt am Service**. Löschst du nur den
+> Kommentar (roter ✕ in der Liste unten), bleibt der Haken in der Spalte
+> **Ack** stehen.
+
+Markierst du mehrere Zeilen, werden alle auf einmal entquittiert — Services
+ohne Quittierung werden dabei übergangen, nicht als Fehler gemeldet.
+Der Knopf **„Host-Ack entfernen"** erscheint nur, wenn der Host überhaupt
+quittiert ist.
+
 ### Downtime (geplante Wartung)
 
 1. Zeile wählen, **„Downtime…"** klicken.

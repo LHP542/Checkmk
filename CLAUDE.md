@@ -964,6 +964,23 @@ Diese Punkte kosten sonst zuverlässig Zeit:
   Site kommt bevorzugt aus dem Kommentar (`CommentExtensions.SiteId`), sonst
   aus der Verbindung — in einer verteilten Installation antwortet die Zentrale
   auch für Remote-Sites, und dann wäre die Verbindungs-Site die falsche.
+- **Quittierung entfernen ≠ Kommentar löschen.** Beim Acknowledge legt Checkmk
+  zusätzlich einen Kommentar an; die Quittierung selbst hängt am Objekt. Den
+  Kommentar zu löschen lässt das Häkchen stehen — genau diese Verwechslung war
+  der Anlass für `RemoveHostAcknowledgementAsync` /
+  `RemoveServiceAcknowledgementAsync`
+  (`POST domain-types/acknowledge/actions/delete/invoke`). Zwei Punkte:
+  - **Nur ausdrücklich benannte Objekte, nie `*_by_query`.** Der Endpunkt
+    kennt auch Abfrage-Varianten; eine Abfrage, die einen Tick zu weit greift,
+    entquittiert stillschweigend fremde Probleme — und das fällt niemandem auf,
+    weil nichts rot wird, was vorher grün war. Mit Hostname und Service-Liste
+    kann der Aufruf per Konstruktion nur treffen, was dasteht. Ein Test hält
+    fest, dass `query` nicht in der Nutzlast vorkommt.
+  - **Die Feldschreibweise ist nicht über alle Stände gleich**
+    (`service_descriptions` vs. `service_description`). Bei einer
+    Feldbeanstandung (`400`) wird einmal die andere Form versucht — beide sind
+    gleich eng gefasst, es ist eine Frage der Schreibweise, nicht des Umfangs.
+    Ein `403` wird **nicht** wiederholt; da hilft keine andere Schreibweise.
 - **Activate Changes:** `If-Match: *` erspart den ETag-Roundtrip.
 - **Host anlegen ≠ Monitoring.** Nach dem Anlegen fehlt noch die Service-Discovery
   (`POST /domain-types/service_discovery_run/actions/start/invoke`, mode `fix_all`) + Aktivieren.

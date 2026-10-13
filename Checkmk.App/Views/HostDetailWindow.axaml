@@ -79,6 +79,11 @@
           <!-- CanWrite ist im Viewer-Modus false (siehe HostDetailViewModel). -->
           <StackPanel Grid.Column="2" Orientation="Vertical" Spacing="4" VerticalAlignment="Center">
             <Button Content="Host-Ack…" Click="OnHostAckClick" IsVisible="{Binding CanWrite}" />
+            <!-- Nur sichtbar, wenn der Host auch quittiert ist — sonst ist es
+                 ein Knopf, der nichts tun kann. Dass die Quittierung etwas
+                 anderes ist als der Kommentar darunter, war der Anlass. -->
+            <Button Content="Host-Ack entfernen" Click="OnRemoveHostAckClick"
+                    IsVisible="{Binding HostStatus.IsAcknowledged, FallbackValue=False}" />
             <Button Content="Host-Downtime…" Click="OnHostDowntimeClick" IsVisible="{Binding CanWrite}" />
             <Button Content="Host-Kommentar…" Click="OnHostCommentClick" IsVisible="{Binding CanWrite}" />
             <Button Content="Im Web öffnen" Click="OnOpenHostInWebClick" />
@@ -87,7 +92,7 @@
       </Border>
 
       <!-- Service-Aggregate + Aktionen -->
-      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="14"
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="14"
             Margin="14,0,14,8">
         <TextBlock Grid.Column="0" Text="{Binding ServicesOk, StringFormat='OK: {0}'}"
                    Foreground="#66BB6A" VerticalAlignment="Center" />
@@ -100,6 +105,10 @@
         <Button Grid.Column="5" Content="Ack…" Click="OnServiceAckClick"
                 IsVisible="{Binding CanWrite}"
                 IsEnabled="{Binding SelectedService, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <Button Grid.Column="9" Content="Ack entfernen" Click="OnRemoveServiceAckClick"
+                IsVisible="{Binding CanWrite}"
+                IsEnabled="{Binding SelectedService.IsAcknowledged, FallbackValue=False}"
+                ToolTip.Tip="Nimmt die Quittierung der markierten Services zurück. Nicht zu verwechseln mit dem Löschen des Kommentars darunter — der ist nur die Notiz dazu." />
         <Button Grid.Column="6" Content="Downtime…" Click="OnServiceDowntimeClick"
                 IsVisible="{Binding CanWrite}"
                 IsEnabled="{Binding SelectedService, Converter={x:Static ObjectConverters.IsNotNull}}" />
@@ -119,6 +128,7 @@
         <DataGrid.ContextMenu>
           <ContextMenu>
             <MenuItem Header="Acknowledge…" Click="OnServiceAckClick" IsVisible="{Binding CanWrite}" />
+            <MenuItem Header="Ack entfernen" Click="OnRemoveServiceAckClick" IsVisible="{Binding CanWrite}" />
             <MenuItem Header="Downtime…" Click="OnServiceDowntimeClick" IsVisible="{Binding CanWrite}" />
             <MenuItem Header="Kommentar…" Click="OnServiceCommentClick" IsVisible="{Binding CanWrite}" />
             <Separator IsVisible="{Binding CanWrite}" />

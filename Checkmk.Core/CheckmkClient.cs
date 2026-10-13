@@ -231,6 +231,87 @@ public sealed class CheckmkClient
         await EnsureSuccessAsync(resp, ct);
     }
 
+    /// <summary>
+    /// Nimmt die Quittierung eines Host-Problems zurück.
+    ///
+    /// <para><b>Nicht zu verwechseln mit dem Löschen des Kommentars</b>, den
+    /// das Quittieren angelegt hat: Der Kommentar ist nur die Notiz dazu, die
+    /// Quittierung hängt am Host. Ihn zu löschen lässt das Häkchen stehen.</para>
+    /// </summary>
+    public async Task RemoveHostAcknowledgementAsync(string hostName,
+        CancellationToken ct = default)
+    {
+        var payload = new { acknowledge_type = "host", host_name = hostName };
+
+        using var resp = await _http.PostAsJsonAsync(
+            "domain-types/acknowledge/actions/delete/invoke", payload, JsonOpts, ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
+    /// <summary>
+    /// Nimmt die Quittierung einzelner Service-Probleme zurück.
+    ///
+    /// <para><b>Immer ausdrücklich benannt, nie über eine Abfrage.</b> Checkmk
+    /// kennt für diesen Endpunkt auch <c>*_by_query</c>-Varianten; die bleiben
+    /// hier bewusst draußen. Eine Abfrage, die einen Tick zu weit greift,
+    /// entquittiert stillschweigend fremde Probleme — und das fällt niemandem
+    /// auf, weil nichts rot wird, was vorher grün war. Mit Hostname und
+    /// Service-Liste kann der Aufruf per Konstruktion nur treffen, was hier
+    /// steht.</para>
+    ///
+    /// <para><b>Zur Feldschreibweise:</b> Beim Anlegen heißt es
+    /// <c>service_description</c> (Einzahl), beim Löschen erwartet Checkmk eine
+    /// Liste. Welche Schreibweise ein Stand genau will, steht nur in der
+    /// Spezifikation der jeweiligen Site — deshalb wird bei einer
+    /// Feldbeanstandung einmal die andere Form versucht. Beide sind gleich eng
+    /// gefasst; es ist eine Frage der Schreibweise, nicht des Umfangs.</para>
+    /// </summary>
+    public async Task RemoveServiceAcknowledgementAsync(string hostName,
+        IReadOnlyList<string> serviceDescriptions, CancellationToken ct = default)
+    {
+        if (serviceDescriptions.Count == 0) return;
+
+        var plural = new
+        {
+            acknowledge_type = "service",
+            host_name = hostName,
+            service_descriptions = serviceDescriptions
+        };
+
+        using (var resp = await _http.PostAsJsonAsync(
+            "domain-types/acknowledge/actions/delete/invoke", plural, JsonOpts, ct))
+        {
+            if (resp.IsSuccessStatusCode) return;
+
+            // Nur bei einer Feldbeanstandung die andere Schreibweise probieren.
+            // Ein 403 (Rechte) oder 404 (Endpunkt fehlt) ist keine.
+            if (resp.StatusCode != HttpStatusCode.BadRequest)
+            {
+                await EnsureSuccessAsync(resp, ct);
+                return;
+            }
+
+            Log.Debug("Ack-Entfernen mit service_descriptions abgelehnt — "
+                    + "versuche die Einzahl-Schreibweise.");
+        }
+
+        // Einzahl-Variante: je Service ein Aufruf, damit der Umfang derselbe
+        // bleibt. Der erste Fehlschlag bricht ab und wird gemeldet — sonst
+        // staende am Ende „fertig", obwohl die Haelfte noch quittiert ist.
+        foreach (var service in serviceDescriptions)
+        {
+            var single = new
+            {
+                acknowledge_type = "service",
+                host_name = hostName,
+                service_description = service
+            };
+            using var resp = await _http.PostAsJsonAsync(
+                "domain-types/acknowledge/actions/delete/invoke", single, JsonOpts, ct);
+            await EnsureSuccessAsync(resp, ct);
+        }
+    }
+
     /// <summary>Plant eine Host-Downtime.</summary>
     public async Task ScheduleHostDowntimeAsync(string hostName, DateTimeOffset start,
         DateTimeOffset end, string comment, CancellationToken ct = default)

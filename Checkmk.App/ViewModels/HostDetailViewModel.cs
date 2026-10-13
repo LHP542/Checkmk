@@ -276,6 +276,63 @@ public sealed partial class HostDetailViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
+    /// <summary>
+    /// Nimmt die Quittierung zurück — für den Host oder für die markierten
+    /// Services.
+    ///
+    /// <para><b>Das ist nicht dasselbe wie den Kommentar zu löschen.</b> Der
+    /// Kommentar ist die Notiz zum Quittieren, die Quittierung hängt am Objekt;
+    /// den Kommentar zu entfernen lässt das Häkchen stehen. Genau diese
+    /// Verwechslung war der Anlass für diese Funktion.</para>
+    /// </summary>
+    /// <param name="selected">Markierte Services; leer = der ganze Host.</param>
+    public async Task PerformRemoveAcknowledgementAsync(
+        IReadOnlyList<ServiceStatus>? selected = null)
+    {
+        var client = _clients.Current;
+        if (!CanWrite || client is null) return;
+
+        var onServices = selected is { Count: > 0 };
+
+        // Nur quittierte Services anfassen. Ein Aufruf fuer einen Service ohne
+        // Quittierung ist bestenfalls wirkungslos und schlimmstenfalls ein
+        // Fehler, der den ganzen Durchgang abbricht.
+        string[] services = onServices
+            ? [.. selected!.Where(s => s.IsAcknowledged).Select(s => s.Description)]
+            : [];
+
+        if (onServices && services.Length == 0)
+        {
+            StatusMessage = "Kein markierter Service ist quittiert.";
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            if (onServices)
+            {
+                await client.RemoveServiceAcknowledgementAsync(HostName, services);
+                StatusMessage = services.Length == 1
+                    ? $"Quittierung entfernt: {services[0]}."
+                    : $"Quittierung von {services.Length} Services entfernt.";
+            }
+            else
+            {
+                await client.RemoveHostAcknowledgementAsync(HostName);
+                StatusMessage = $"Host-Quittierung entfernt: {HostName}.";
+            }
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Quittierung entfernen fehlgeschlagen (Host={Host}, Services={Count}).",
+                HostName, services.Length);
+            StatusMessage = $"Fehler: {ex.Message}";
+        }
+        finally { IsBusy = false; }
+    }
+
     /// <summary>Downtime auf den kompletten Host — „ganzer Host in Wartung".</summary>
     public async Task PerformHostDowntimeAsync(string comment, DateTimeOffset start, DateTimeOffset end)
     {

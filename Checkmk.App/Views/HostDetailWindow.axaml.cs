@@ -36,6 +36,22 @@ public partial class HostDetailWindow : ChromeWindow
     private async void OnServiceAckClick(object? sender, RoutedEventArgs e)
         => await ShowServiceActionAsync(ServiceActionMode.Acknowledge);
 
+    /// <summary>
+    /// Nimmt die Quittierung der markierten Services zurück — ohne Dialog, weil
+    /// es nichts einzugeben gibt und die Aktion folgenlos wiederholbar ist.
+    /// </summary>
+    private async void OnRemoveServiceAckClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null || !_vm.CanWrite) return;
+        await _vm.PerformRemoveAcknowledgementAsync(GetSelectedServices());
+    }
+
+    private async void OnRemoveHostAckClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null || !_vm.CanWrite) return;
+        await _vm.PerformRemoveAcknowledgementAsync();
+    }
+
     private async void OnServiceDowntimeClick(object? sender, RoutedEventArgs e)
         => await ShowServiceActionAsync(ServiceActionMode.Downtime);
 

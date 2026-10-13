@@ -719,6 +719,67 @@ public sealed partial class StatusViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
+    /// <summary>
+    /// Nimmt die Quittierung der übergebenen Services zurück.
+    ///
+    /// <para><b>Nicht zu verwechseln mit dem Löschen des Kommentars</b>, den
+    /// das Quittieren angelegt hat: Der Kommentar ist die Notiz dazu, die
+    /// Quittierung hängt am Service. Den Kommentar zu entfernen lässt das
+    /// Häkchen stehen.</para>
+    ///
+    /// <para>Gruppiert nach Host, weil der Endpunkt eine Service-Liste je Host
+    /// nimmt — bei 30 markierten Zeilen auf drei Hosts sind das drei Aufrufe
+    /// statt dreißig. Fehler brechen den Durchgang nicht ab, sondern werden am
+    /// Ende gezählt; dieselbe Regel wie beim Bulk-Ack.</para>
+    /// </summary>
+    public async Task PerformRemoveAcknowledgementAsync(IReadOnlyList<ServiceStatus> services)
+    {
+        var client = _clients.Current;
+        if (!CanWrite || client is null) return;
+
+        // Nur quittierte anfassen — ein Aufruf fuer einen Service ohne
+        // Quittierung ist wirkungslos und erzeugt nur Fehlermeldungen.
+        var byHost = services
+            .Where(s => s.IsAcknowledged)
+            .GroupBy(s => s.HostName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (byHost.Count == 0)
+        {
+            StatusMessage = "Kein markierter Service ist quittiert.";
+            return;
+        }
+
+        var errors = 0;
+        var done = 0;
+        try
+        {
+            IsBusy = true;
+            foreach (var group in byHost)
+            {
+                var descriptions = group.Select(s => s.Description).ToList();
+                try
+                {
+                    StatusMessage = $"Quittierung entfernen: {group.Key} ({descriptions.Count})";
+                    await client.RemoveServiceAcknowledgementAsync(group.Key, descriptions);
+                    done += descriptions.Count;
+                }
+                catch (Exception ex)
+                {
+                    errors += descriptions.Count;
+                    Log.Warn(ex, "Ack-Entfernen fehlgeschlagen fuer {Host} ({Count} Services).",
+                        group.Key, descriptions.Count);
+                }
+            }
+
+            StatusMessage = errors == 0
+                ? $"Quittierung entfernt: {done} Services."
+                : $"Quittierung entfernt: {done} — {errors} fehlgeschlagen (siehe Log).";
+            await RefreshAsync();
+        }
+        finally { IsBusy = false; }
+    }
+
     /// <summary>Downtime fuer alle uebergebenen Services (Bulk). Fehler werden gesammelt.</summary>
     public async Task PerformBulkDowntimeAsync(IReadOnlyList<ServiceStatus> services,
         string comment, DateTimeOffset start, DateTimeOffset end)

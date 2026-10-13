@@ -74,6 +74,8 @@
           <MenuItem Header="Host-Details…" Click="OnOpenHostDetailsClick" />
           <Separator IsVisible="{Binding CanWrite}" />
           <MenuItem Header="Acknowledge…" Click="OnAcknowledgeClick" IsVisible="{Binding CanWrite}" />
+          <MenuItem Header="Ack entfernen" Click="OnRemoveAckClick" IsVisible="{Binding CanWrite}"
+                    ToolTip.Tip="Nimmt die Quittierung der markierten Services zurueck." />
           <MenuItem Header="Downtime…" Click="OnDowntimeClick" IsVisible="{Binding CanWrite}" />
           <MenuItem Header="Kommentar…" Click="OnCommentClick" IsVisible="{Binding CanWrite}" />
           <Separator IsVisible="{Binding CanWrite}" />

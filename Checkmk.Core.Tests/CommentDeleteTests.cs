@@ -140,7 +140,100 @@ public class CommentDeleteTests
         handler.LastMethod.Should().Be(HttpMethod.Delete);
     }
 
+    // --- Quittierung entfernen --------------------------------------------
+
+    /// <summary>
+    /// <b>Die wichtigste Zusicherung.</b> Checkmk kennt für diesen Endpunkt
+    /// auch <c>*_by_query</c>-Varianten. Eine Abfrage, die einen Tick zu weit
+    /// greift, entquittiert stillschweigend fremde Probleme — und das fällt
+    /// niemandem auf, weil nichts rot wird, was vorher grün war. Deshalb darf
+    /// die Nutzlast nur ausdrücklich benannte Objekte enthalten.
+    /// </summary>
+    [Fact]
+    public async Task Das_Entfernen_nennt_die_Objekte_und_nutzt_keine_Abfrage()
+    {
+        var client = Make(HttpStatusCode.NoContent, "", out var handler);
+
+        await client.RemoveServiceAcknowledgementAsync("PA21-1", ["Tunnel Secondary"],
+            TestContext.Current.CancellationToken);
+
+        handler.LastBody.Should().Contain("PA21-1").And.Contain("Tunnel Secondary");
+        handler.LastBody.Should().NotContain("query", "eine Abfrage kann mehr treffen als gemeint");
+        handler.LastBody.Should().NotContain("_by_query");
+    }
+
+    [Fact]
+    public async Task Das_Entfernen_am_Host_nennt_nur_den_Host()
+    {
+        var client = Make(HttpStatusCode.NoContent, "", out var handler);
+
+        await client.RemoveHostAcknowledgementAsync("PA21-1",
+            TestContext.Current.CancellationToken);
+
+        handler.LastBody.Should().Contain("\"acknowledge_type\":\"host\"").And.Contain("PA21-1");
+        handler.LastBody.Should().NotContain("query");
+    }
+
+    /// <summary>Ohne Services gibt es nichts zu tun — und vor allem keinen
+    /// Aufruf, der mangels Einschraenkung alles treffen koennte.</summary>
+    [Fact]
+    public async Task Eine_leere_Liste_loest_keinen_Aufruf_aus()
+    {
+        var client = Make(HttpStatusCode.NoContent, "", out var handler);
+
+        await client.RemoveServiceAcknowledgementAsync("PA21-1", [],
+            TestContext.Current.CancellationToken);
+
+        handler.Calls.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Beim Anlegen heisst das Feld <c>service_description</c>, beim Loeschen
+    /// erwartet Checkmk eine Liste. Welche Schreibweise ein Stand will, steht
+    /// nur in dessen eigener Spezifikation — deshalb wird bei einer
+    /// Feldbeanstandung die andere Form versucht. Beide sind gleich eng
+    /// gefasst.
+    /// </summary>
+    [Fact]
+    public async Task Bei_einer_Feldbeanstandung_wird_die_Einzahl_versucht()
+    {
+        var handler = new StubHandler(HttpStatusCode.BadRequest,
+            """{"title":"Bad Request","fields":{"service_descriptions":["Unknown field."]}}""");
+        var client = new CheckmkClient(new HttpClient(handler), Options());
+
+        // Zweiter Aufruf soll gelingen.
+        handler.ThenSucceed = true;
+
+        await client.RemoveServiceAcknowledgementAsync("PA21-1", ["Tunnel Secondary"],
+            TestContext.Current.CancellationToken);
+
+        handler.Calls.Should().Be(2);
+        handler.LastBody.Should().Contain("\"service_description\":\"Tunnel Secondary\"");
+    }
+
+    /// <summary>Ein 403 ist keine Feldbeanstandung — da hilft keine andere
+    /// Schreibweise, und ein zweiter Versuch verschleiert nur die Ursache.</summary>
+    [Fact]
+    public async Task Ein_403_wird_nicht_mit_der_Einzahl_wiederholt()
+    {
+        var client = Make(HttpStatusCode.Forbidden, """{"title":"Forbidden"}""", out var handler);
+
+        var act = () => client.RemoveServiceAcknowledgementAsync("PA21-1", ["x"],
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<CheckmkApiException>();
+        handler.Calls.Should().Be(1);
+    }
+
     // --- Gerüst -----------------------------------------------------------
+
+    private static CheckmkOptions Options() => new()
+    {
+        Host = "monitoring.test",
+        Site = "prod",
+        Username = "automation",
+        Secret = "s3cr3t"
+    };
 
     private static CheckmkClient Make(HttpStatusCode status, string body, out StubHandler handler)
     {
@@ -160,6 +253,10 @@ public class CommentDeleteTests
         public string LastBody { get; private set; } = "";
         public HttpMethod? LastMethod { get; private set; }
 
+        /// <summary>Ab dem zweiten Aufruf mit Erfolg antworten — fuer den
+        /// Wechsel auf die andere Feldschreibweise.</summary>
+        public bool ThenSucceed { get; set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -167,6 +264,9 @@ public class CommentDeleteTests
             LastMethod = request.Method;
             if (request.Content is not null)
                 LastBody = await request.Content.ReadAsStringAsync(cancellationToken);
+
+            if (ThenSucceed && Calls > 1)
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
 
             return new HttpResponseMessage(status)
             {
