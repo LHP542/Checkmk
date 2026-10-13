@@ -181,7 +181,14 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      unterdrücken statt nur eine Farbe zu ändern.
   Der Sammelknoten **„Ohne Bereich"** ist kein Datensatz (`AreaId = -1`), sondern
   die Restmenge — die Arbeitsliste beim Zuordnen und der einzige Weg, einen
-  vergessenen Host überhaupt zu bemerken.
+  vergessenen Host überhaupt zu bemerken. **Er bekommt seine Hosts als Kinder
+  wie jeder Bereich** (`ApplyUnassigned` → `SetHosts`); das fehlte bis
+  2026-10-13, und eine Arbeitsliste, die nur „35 Hosts" sagt, ist keine. Dort
+  sind alle Hosts im Filter — die Liste stammt aus `worstPerHost` —, anders als
+  bei einem Bereich, wo sie bewusst auch Hosts außerhalb zeigt. Auch hier gilt
+  **erst `SetHosts`, dann `Apply`**: `Apply` vergleicht die Kinderzahl mit der
+  gefilterten, um „(n zugeordnet)" zu setzen, und rechnete sonst gegen den
+  Stand des vorigen Durchlaufs.
 - **Ein Bereich lässt sich aufklappen und zeigt seine Hosts.** Die Liste ist
   bewusst **ungefiltert**: Ampelpunkt und Zahl am Bereich zeigen die Linse des
   aktiven Filters, die Kindliste den tatsächlichen Bestand. Genau die Differenz

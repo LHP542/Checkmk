@@ -1372,6 +1372,10 @@ die noch nirgends zugeordnet sind. Das ist die Arbeitsliste: Solange dort etwas
 steht, ist die Zuordnung nicht fertig. Und es ist der einzige Weg, einen
 vergessenen Host zu bemerken; sonst taucht er schlicht nirgends auf.
 
+**Auch dieser Knoten lässt sich aufklappen** und zeigt dann, welche Hosts
+gemeint sind — mit Ampelpunkt, und per Doppelklick direkt in die Host-Details.
+„35 Hosts" zu lesen, ohne zu sehen welche, hilft beim Zuordnen nicht weiter.
+
 Ein **grauer Punkt** heißt „diesem Bereich sind keine Hosts zugeordnet" — bewusst
 nicht grün, denn ein leerer Bereich ist nicht dasselbe wie ein gesunder.
 

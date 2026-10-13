@@ -156,7 +156,7 @@ public sealed partial class AreaViewModel : ViewModelBase
         foreach (var (areaId, node) in _byId)
             node.Apply(aggregates.GetValueOrDefault(areaId, AreaAggregate.Empty));
 
-        ApplyUnassigned(snapshot, worstPerHost);
+        ApplyUnassigned(snapshot, worstPerHost, handled);
         MapChanged?.Invoke();
     }
 
@@ -198,7 +198,8 @@ public sealed partial class AreaViewModel : ViewModelBase
     /// auftaucht.
     /// </summary>
     private void ApplyUnassigned(AreaSnapshot snapshot,
-        IReadOnlyDictionary<string, ServiceState> worstPerHost)
+        IReadOnlyDictionary<string, ServiceState> worstPerHost,
+        IReadOnlyDictionary<string, HandledReason> handled)
     {
         // Nur sichtbare Bereiche zaehlen: Ein Host in einem Bereich einer
         // anderen Site steht hier zu Recht unter "Ohne Bereich" — in DIESER
@@ -222,6 +223,27 @@ public sealed partial class AreaViewModel : ViewModelBase
         }
 
         UnassignedHosts = hosts;
+
+        // Auch dieser Knoten bekommt seine Hosts als Kinder. Er ist die
+        // Arbeitsliste beim Zuordnen — „35 Hosts" zu lesen, ohne zu sehen
+        // welche, hilft genau niemandem. Dass das fehlte, fiel erst auf, als
+        // die anderen Bereiche aufklappbar waren.
+        //
+        // Hier sind alle Hosts im Filter (sie stammen aus worstPerHost, und
+        // das ist die gefilterte Menge) — anders als bei einem Bereich, wo die
+        // Liste bewusst auch Hosts ausserhalb des Filters zeigt.
+        //
+        // ERST die Liste, DANN das Aggregat: Apply vergleicht die Zahl der
+        // Kinder mit der gefilterten, um „(n zugeordnet)" zu setzen. Andersherum
+        // rechnete es gegen den Stand des vorigen Durchlaufs.
+        _unassigned.SetHosts(
+        [
+            .. hosts
+                .OrderBy(h => h, StringComparer.OrdinalIgnoreCase)
+                .Select(h => new AreaHostViewModel(h, worstPerHost[h], inFilter: true,
+                    handled.TryGetValue(h, out var why) ? why : null))
+        ]);
+
         _unassigned.Apply(new AreaAggregate(hosts.Count, problems, worst, hosts.Count > 0));
 
         static int Rank(ServiceState s) => s switch
