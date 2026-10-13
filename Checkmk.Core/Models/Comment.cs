@@ -25,6 +25,17 @@ public sealed record CommentExtensions
     [JsonPropertyName("persistent")]
     public bool Persistent { get; init; }
 
+    /// <summary>
+    /// Site, auf der der Kommentar liegt. Pflichtangabe beim Löschen.
+    ///
+    /// <para>Kann fehlen — ältere Checkmk-Stände liefern das Feld nicht. Dann
+    /// gilt die Site der Verbindung. In einer verteilten Installation
+    /// antwortet die Zentrale auch für Remote-Sites, und dort wäre das die
+    /// falsche; deshalb wird der Wert bevorzugt, wenn er dabei ist.</para>
+    /// </summary>
+    [JsonPropertyName("site_id")]
+    public string? SiteId { get; init; }
+
     /// <summary>Wird bei Reboot verworfen wenn Persistent=false.</summary>
     [JsonPropertyName("entry_time")]
     public DateTimeOffset? EntryTime { get; init; }

@@ -34,12 +34,17 @@ public sealed class CheckmkClient
 
     private readonly HttpClient _http;
 
+    /// <summary>Site der Verbindung — Pflichtfeld einiger Kommando-Endpunkte
+    /// (z. B. Kommentar löschen).</summary>
+    private readonly string _site;
+
     public CheckmkClient(HttpClient http, IOptions<CheckmkOptions> options)
         : this(http, options.Value) { }
 
     public CheckmkClient(HttpClient http, CheckmkOptions options)
     {
         _http = http;
+        _site = options.Site;
         _http.BaseAddress = options.BaseUri;
         _http.Timeout = options.Timeout;
         _http.DefaultRequestHeaders.Authorization = BuildAuthHeader(options);
@@ -316,20 +321,33 @@ public sealed class CheckmkClient
     /// Loescht einen Kommentar. Checkmk 2.4/2.5 haben zwei konkurrierende Varianten;
     /// wir probieren beide in der Reihenfolge Doku-Empfehlung → REST-Konvention:
     /// zuerst <c>POST /domain-types/comment/actions/delete/invoke</c> mit
-    /// <c>{delete_type:"by_id", comment_id:[id]}</c>, bei 404/405 Fallback auf
-    /// <c>DELETE /objects/comment/{id}</c>. Andere 4xx/5xx werden direkt hochgereicht.
+    /// <c>{delete_type:"by_id", comment_id:&lt;zahl&gt;, site_id:"…"}</c>, bei
+    /// 404/405 Fallback auf <c>DELETE /objects/comment/{id}</c>. Andere 4xx/5xx
+    /// werden direkt hochgereicht.
     /// </summary>
-    public async Task DeleteCommentAsync(string commentId, CancellationToken ct = default)
+    /// <param name="siteId">Site des Kommentars. Leer = die Site der Verbindung.</param>
+    public async Task DeleteCommentAsync(string commentId, string? siteId = null,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(commentId))
             throw new ArgumentException("commentId darf nicht leer sein", nameof(commentId));
 
         // Variante A: POST domain-types/comment/actions/delete/invoke
-        // 2.5-Standard laut REST-API-Doku. comment_id wird als Array uebergeben.
+        //
+        // comment_id ist eine ZAHL, nicht ein Array von Zeichenketten, und
+        // site_id ist Pflicht. Beides hat Checkmk 2.5 gemeldet:
+        // „These fields have problems: comment_id, site_id" — die Nutzlast
+        // davor schickte ["5"] und gar keine Site.
+        //
+        // Die Site kommt vom Kommentar, wenn sie dabei steht, sonst von der
+        // Verbindung. In einer verteilten Installation beantwortet die
+        // Zentrale auch fuer Remote-Sites, und dann ist die Site des Kommentars
+        // die richtige — nicht die, mit der wir sprechen.
         var payload = new
         {
             delete_type = "by_id",
-            comment_id = new[] { commentId }
+            comment_id = long.TryParse(commentId, out var numeric) ? numeric : default(long?),
+            site_id = string.IsNullOrWhiteSpace(siteId) ? _site : siteId
         };
         using (var resp = await _http.PostAsJsonAsync(
             "domain-types/comment/actions/delete/invoke", payload, JsonOpts, ct))
@@ -497,7 +515,18 @@ public sealed class CheckmkClient
             resp.StatusCode, body);
     }
 
-    /// <summary>Zieht "title"/"detail" aus einer RFC7807 problem+json-Antwort.</summary>
+    /// <summary>
+    /// Zieht "title"/"detail" aus einer RFC7807 problem+json-Antwort — und
+    /// <b>die Feldfehler aus <c>fields</c></b>.
+    ///
+    /// <para>Ohne die Feldfehler lautet die Meldung nur „These fields have
+    /// problems: comment_id, site_id" — man weiss, <i>welche</i> Felder
+    /// Checkmk stoeren, aber nicht <i>warum</i>, und raet dann an der Nutzlast
+    /// herum. Checkmk liefert den Grund gleich mit
+    /// (<c>"comment_id": ["Not a valid integer."]</c>); er stand bisher nur
+    /// ungenutzt im Antwortkoerper. Real: das Loeschen eines Kommentars
+    /// scheiterte, und der erste Verdacht ging auf die Rechte.</para>
+    /// </summary>
     private static string? TryExtractProblemDetail(string body)
     {
         if (string.IsNullOrWhiteSpace(body))
@@ -508,6 +537,10 @@ public sealed class CheckmkClient
             var root = doc.RootElement;
             var title = root.TryGetProperty("title", out var t) ? t.GetString() : null;
             var detail = root.TryGetProperty("detail", out var d) ? d.GetString() : null;
+
+            if (ExtractFieldErrors(root) is { Length: > 0 } fields)
+                detail = detail is null ? fields : $"{detail} ({fields})";
+
             return (title, detail) switch
             {
                 (not null, not null) => $"{title} — {detail}",
@@ -519,6 +552,44 @@ public sealed class CheckmkClient
         catch (JsonException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Baut aus Checkmks <c>fields</c>-Objekt eine lesbare Zeile:
+    /// <c>comment_id: Not a valid integer.; site_id: Missing data for required field.</c>
+    ///
+    /// <para>Die Struktur ist verschachtelt und nicht einheitlich — mal
+    /// <c>{"feld": ["Grund"]}</c>, mal <c>{"body": {"feld": [...]}}</c>.
+    /// Deshalb rekursiv über alles, was nach Feld/Grund aussieht, statt eine
+    /// feste Form anzunehmen, die beim naechsten Endpunkt nicht mehr passt.</para>
+    /// </summary>
+    private static string ExtractFieldErrors(JsonElement root)
+    {
+        if (!root.TryGetProperty("fields", out var fields)) return "";
+
+        var parts = new List<string>();
+        Collect(fields, "");
+        return string.Join("; ", parts.Take(8));
+
+        void Collect(JsonElement node, string path)
+        {
+            switch (node.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    foreach (var p in node.EnumerateObject())
+                        Collect(p.Value, path.Length == 0 ? p.Name : $"{path}.{p.Name}");
+                    break;
+
+                case JsonValueKind.Array:
+                    foreach (var item in node.EnumerateArray())
+                        Collect(item, path);
+                    break;
+
+                case JsonValueKind.String when node.GetString() is { Length: > 0 } reason:
+                    parts.Add(path.Length == 0 ? reason : $"{path}: {reason}");
+                    break;
+            }
         }
     }
 

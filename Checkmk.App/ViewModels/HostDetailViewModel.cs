@@ -306,7 +306,14 @@ public sealed partial class HostDetailViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await client.DeleteCommentAsync(commentId);
+            // Site des Kommentars mitgeben, wenn Checkmk sie geliefert hat —
+            // sie ist Pflichtfeld beim Loeschen und in einer verteilten
+            // Installation nicht zwingend die Site der Verbindung.
+            var site = Comments
+                .FirstOrDefault(c => string.Equals(c.Id, commentId, StringComparison.Ordinal))
+                ?.Extensions?.SiteId;
+
+            await client.DeleteCommentAsync(commentId, site);
             StatusMessage = "Kommentar gelöscht.";
             await RefreshAsync();
         }

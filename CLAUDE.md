@@ -951,6 +951,19 @@ Diese Punkte kosten sonst zuverlässig Zeit:
   Browser-URL hinter `folder=` bzw. via `folder_config`-Endpoint.
 - **HTTP-Status ≠ fachlicher Erfolg.** Kommandos laufen serverseitig über Livestatus; bei
   Bedarf Zustand danach erneut abfragen. Discovery/Activate laufen als Hintergrund-Task.
+- **Bei `400` steht der Grund in `fields`, nicht im `title`.** Checkmk meldet
+  „These fields have problems: comment_id, site_id" — *welche* Felder stören,
+  aber nicht *warum*. Der Grund kommt im selben Körper mit
+  (`"comment_id": ["Not a valid integer."]`). `TryExtractProblemDetail` liest
+  ihn jetzt mit aus (rekursiv, weil die Struktur je Endpunkt mal flach und mal
+  unter `body` verschachtelt ist). Ohne das rät man an der Nutzlast herum —
+  real passiert beim Löschen eines Kommentars, wo der erste Verdacht auf die
+  Rechte ging.
+- **Kommentar löschen:** `comment_id` ist eine **Zahl** und `site_id` ist
+  **Pflicht** (`{delete_type:"by_id", comment_id:42, site_id:"prod"}`). Die
+  Site kommt bevorzugt aus dem Kommentar (`CommentExtensions.SiteId`), sonst
+  aus der Verbindung — in einer verteilten Installation antwortet die Zentrale
+  auch für Remote-Sites, und dann wäre die Verbindungs-Site die falsche.
 - **Activate Changes:** `If-Match: *` erspart den ETag-Roundtrip.
 - **Host anlegen ≠ Monitoring.** Nach dem Anlegen fehlt noch die Service-Discovery
   (`POST /domain-types/service_discovery_run/actions/start/invoke`, mode `fix_all`) + Aktivieren.
