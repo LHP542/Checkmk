@@ -1357,33 +1357,40 @@ vergessenen Host zu bemerken; sonst taucht er schlicht nirgends auf.
 Ein **grauer Punkt** heißt „diesem Bereich sind keine Hosts zugeordnet" — bewusst
 nicht grün, denn ein leerer Bereich ist nicht dasselbe wie ein gesunder.
 
-### Quittierte Probleme färben nicht mehr rot
+### Bekannte Probleme färben nicht mehr rot
 
-Ein **CRIT, den jemand acknowledged hat, zählt hier als Warnung** — der Standort
-wird gelb statt rot. Der Punkt beantwortet nämlich nicht „welchen Status hat der
-Check", sondern **„liegt hier etwas, um das sich noch niemand kümmert"**. Ein
-Acknowledge sagt genau das Gegenteil: gesehen, jemand ist dran.
+Ein **CRIT, den jemand acknowledged hat oder der in einem Wartungsfenster
+liegt, zählt hier als Warnung** — der Standort wird gelb statt rot. Der Punkt
+beantwortet nämlich nicht „welchen Status hat der Check", sondern **„liegt hier
+etwas, um das sich noch niemand kümmert"**. Beides sagt das Gegenteil: ein
+Acknowledge „gesehen, jemand ist dran", eine Downtime „das ist so geplant".
 
 Ohne diese Regel wäre die Karte nach dem ersten schlechten Tag durchgehend rot
-und sagte nichts mehr — und das Quittieren hätte sichtbar keine Wirkung.
+und sagte nichts mehr — und Quittieren wie Wartungsfenster hätten sichtbar
+keine Wirkung.
 
-| Lage | Punkt |
-|---|---|
-| CRIT, nicht quittiert | **rot** |
-| CRIT, quittiert | **gelb** + Vermerk „quittiert" am Host |
-| CRIT quittiert **und** ein zweiter CRIT offen | **rot** |
-| WARN, quittiert | **gelb** (unverändert) |
+| Lage | Punkt | Vermerk am Host |
+|---|---|---|
+| CRIT, unbearbeitet | **rot** | — |
+| CRIT, quittiert | **gelb** | „quittiert" |
+| CRIT, in Wartung | **gelb** | „in Wartung" |
+| CRIT, quittiert **und** in Wartung | **gelb** | „in Wartung" |
+| CRIT bekannt **und** ein zweiter CRIT offen | **rot** | — |
+| WARN (egal ob quittiert/Wartung) | **gelb** | — |
 
-Zwei Dinge dazu:
+Drei Dinge dazu:
 
-- **Gelb, nicht grün.** Das Problem besteht weiter, es ist nur in Arbeit — und
-  es zählt weiter als Problem in der Zahl daneben („1 Problem").
-- **Klappst du den Bereich auf**, steht beim betroffenen Host **„quittiert"**.
-  Sonst sähe ein quittierter Ausfall aus wie eine gewöhnliche Warnung.
+- **Gelb, nicht grün.** Das Problem besteht weiter — ein Server in Wartung ist
+  tatsächlich nicht erreichbar. Es zählt auch weiter als Problem in der Zahl
+  daneben („1 Problem").
+- **Klappst du den Bereich auf**, steht beim betroffenen Host, *warum* er gelb
+  ist. Sonst sähe ein bekannter Ausfall aus wie eine gewöhnliche Warnung.
+- **Ein unbearbeiteter CRIT daneben gewinnt.** Ein einzelnes Acknowledge soll
+  einen zweiten, noch offenen Ausfall nicht verdecken.
 
 Die **Liste im Status-Tab bleibt unverändert**: Dort ist ein CRIT ein CRIT, und
-ob er quittiert ist, steht in der Spalte **Ack**. Auch Tray-Symbol und
-Benachrichtigungen bleiben, wie sie waren.
+ob er quittiert oder in Wartung ist, steht in den Spalten **Ack** und **DT**.
+Auch Tray-Symbol und Benachrichtigungen bleiben, wie sie waren.
 
 ### Hosts zuordnen
 

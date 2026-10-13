@@ -3,6 +3,20 @@ using Checkmk.Data;
 
 namespace Checkmk.App.Services;
 
+/// <summary>
+/// Warum der Punkt eines Hosts gelb statt rot ist. Steht als Vermerk in der
+/// Host-Zeile des aufgeklappten Bereichs — sonst wäre die Herabstufung
+/// unsichtbar.
+/// </summary>
+public enum HandledReason
+{
+    /// <summary>Jemand hat das Problem quittiert.</summary>
+    Acknowledged,
+
+    /// <summary>Geplantes Wartungsfenster.</summary>
+    InDowntime
+}
+
 /// <summary>Aggregat eines Bereichs — inklusive seiner Unterbereiche.</summary>
 /// <param name="HostCount">Hosts im Bereich und darunter, die auf den aktiven Filter passen.</param>
 /// <param name="ProblemCount">Davon mit Status schlechter als OK.</param>
@@ -127,29 +141,43 @@ public static class AreaRollup
     }
 
     /// <summary>
+    /// Ist dieser Service „in Bearbeitung" — quittiert oder in einem geplanten
+    /// Wartungsfenster?
+    ///
+    /// <para>Beides zählt gleich, weil beides dieselbe Frage beantwortet:
+    /// Weiß schon jemand davon? Ein Acknowledge sagt „gesehen, jemand ist
+    /// dran", eine Downtime sagt „das ist so gewollt, und zwar bis dann".</para>
+    /// </summary>
+    public static bool IsHandled(ServiceStatus service)
+        => service.IsAcknowledged || service.InDowntime;
+
+    /// <summary>
     /// Status eines Service, <b>wie er für die Bereichsfarbe zählt</b>.
     ///
-    /// <para><b>Ein quittierter CRIT zählt als WARN.</b> Die Farbe eines
-    /// Bereichs beantwortet nicht „welchen Status hat der Check", sondern
-    /// „liegt hier etwas, um das sich noch niemand kümmert". Ein Acknowledge
-    /// heißt genau: gesehen, jemand ist dran. Bleibt der Standort danach rot,
-    /// ist die Karte nach dem ersten schlechten Tag durchgehend rot und sagt
-    /// nichts mehr — und das Quittieren, das in Checkmk genau dafür da ist,
-    /// hätte sichtbar keine Wirkung.</para>
+    /// <para><b>Ein quittierter CRIT — oder einer in Wartung — zählt als
+    /// WARN.</b> Die Farbe eines Bereichs beantwortet nicht „welchen Status hat
+    /// der Check", sondern „liegt hier etwas, um das sich noch niemand
+    /// kümmert". Ein Acknowledge heißt genau: gesehen, jemand ist dran; eine
+    /// Downtime heißt: das ist so geplant. Bleibt der Standort in beiden Fällen
+    /// rot, ist die Karte nach dem ersten schlechten Tag durchgehend rot und
+    /// sagt nichts mehr — und Quittieren wie Wartungsfenster, die in Checkmk
+    /// genau dafür da sind, hätten sichtbar keine Wirkung.</para>
     ///
     /// <para>Herabgestuft wird nur bis WARN, <b>nicht bis OK</b>: Das Problem
-    /// besteht weiter, es ist nur in Arbeit. Grün wäre eine Lüge.</para>
+    /// besteht weiter, es ist nur bekannt. Grün wäre eine Lüge — ein Server in
+    /// Wartung ist tatsächlich nicht verfügbar.</para>
     ///
     /// <para><b>Nur CRIT wird herabgestuft.</b> Ein quittierter WARN bleibt
     /// WARN — ihn auf OK zu ziehen hieße, ihn verschwinden zu lassen, und
     /// damit wäre der Bereich grün, obwohl etwas offen ist.</para>
     ///
     /// <para>Die <b>Liste</b> im Status-Tab zeigt weiterhin den echten Status;
-    /// dort steht die Quittierung in einer eigenen Spalte, und „CRIT ist CRIT"
-    /// ist die richtige Antwort auf die Frage, die eine Statusliste stellt.</para>
+    /// dort stehen Quittierung und Wartung in eigenen Spalten, und „CRIT ist
+    /// CRIT" ist die richtige Antwort auf die Frage, die eine Statusliste
+    /// stellt.</para>
     /// </summary>
     public static ServiceState EffectiveState(ServiceStatus service)
-        => service.ServiceState == ServiceState.Critical && service.IsAcknowledged
+        => service.ServiceState == ServiceState.Critical && IsHandled(service)
             ? ServiceState.Warning
             : service.ServiceState;
 
@@ -174,28 +202,41 @@ public static class AreaRollup
     }
 
     /// <summary>
-    /// Hosts, deren Punkt nur deshalb nicht rot ist, weil der CRIT quittiert
-    /// wurde.
+    /// Hosts, deren Punkt nur deshalb nicht rot ist, weil der CRIT bekannt ist
+    /// — samt dem Grund, der in der Host-Zeile steht.
     ///
     /// <para>Ohne diese Angabe wäre die Herabstufung eine stille: Ein
     /// quittierter Ausfall sähe in der Bereichsliste genauso aus wie eine echte
-    /// Warnung. Die Host-Zeile schreibt deshalb „quittiert" dazu.</para>
+    /// Warnung.</para>
+    ///
+    /// <para><b>Wartung sticht Quittierung</b>, wenn beides zutrifft: „in
+    /// Wartung" erklärt die Lage vollständig (es ist geplant und endet zu einer
+    /// bekannten Zeit), „quittiert" sagt nur, dass jemand hingesehen hat.</para>
     /// </summary>
-    public static HashSet<string> HandledHosts(IEnumerable<ServiceStatus> services)
+    public static Dictionary<string, HandledReason> HandledHosts(
+        IEnumerable<ServiceStatus> services)
     {
-        var handled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var handled = new Dictionary<string, HandledReason>(StringComparer.OrdinalIgnoreCase);
         var unhandled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var s in services)
         {
             if (s.ServiceState != ServiceState.Critical) continue;
-            (s.IsAcknowledged ? handled : unhandled).Add(s.HostName);
+
+            if (!IsHandled(s)) { unhandled.Add(s.HostName); continue; }
+
+            var reason = s.InDowntime ? HandledReason.InDowntime : HandledReason.Acknowledged;
+            if (!handled.TryGetValue(s.HostName, out var existing)
+                || reason == HandledReason.InDowntime)
+                handled[s.HostName] = reason;
+            else
+                handled[s.HostName] = existing;
         }
 
-        // Ein Host mit einem quittierten UND einem offenen CRIT ist nicht
-        // „quittiert" — sein Punkt ist weiterhin rot, und der Vermerk waere
+        // Ein Host mit einem bekannten UND einem offenen CRIT gilt nicht als
+        // bearbeitet — sein Punkt ist weiterhin rot, und der Vermerk waere
         // dann irrefuehrend.
-        handled.ExceptWith(unhandled);
+        foreach (var host in unhandled) handled.Remove(host);
         return handled;
     }
 

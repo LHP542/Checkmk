@@ -163,8 +163,14 @@ public class AreaRollupTests
 
     // --- Quittierte Probleme ---------------------------------------------
 
-    private static ServiceStatus Svc(string host, int state, bool ack = false, string desc = "x")
-        => new() { HostName = host, Description = desc, State = state, Acknowledged = ack ? 1 : 0 };
+    private static ServiceStatus Svc(string host, int state, bool ack = false, string desc = "x",
+        bool downtime = false)
+        => new()
+        {
+            HostName = host, Description = desc, State = state,
+            Acknowledged = ack ? 1 : 0,
+            ScheduledDowntimeDepth = downtime ? 1 : 0
+        };
 
     /// <summary>
     /// Der Kern: Die Bereichsfarbe beantwortet „liegt hier etwas, um das sich
@@ -224,10 +230,61 @@ public class AreaRollupTests
 
     // --- Der Vermerk „quittiert" -----------------------------------------
 
+    // --- Wartungsfenster --------------------------------------------------
+
+    /// <summary>
+    /// Eine geplante Wartung ist derselbe Fall wie ein Acknowledge: Es weiss
+    /// schon jemand davon. Ein Standort, der waehrend jedes Wartungsfensters
+    /// rot leuchtet, trainiert einem das Wegsehen an.
+    /// </summary>
+    [Fact]
+    public void Ein_CRIT_in_Wartung_zaehlt_als_WARN()
+        => AreaRollup.WorstStatePerHost([Svc("sql01", 2, downtime: true)])["sql01"]
+            .Should().Be(ServiceState.Warning);
+
+    /// <summary>Nicht gruen: Ein Server in Wartung ist tatsaechlich nicht
+    /// verfuegbar.</summary>
+    [Fact]
+    public void Ein_CRIT_in_Wartung_wird_nicht_gruen()
+        => AreaRollup.WorstStatePerHost([Svc("sql01", 2, downtime: true)])["sql01"]
+            .Should().NotBe(ServiceState.Ok);
+
+    [Fact]
+    public void Ein_offener_CRIT_neben_einem_in_Wartung_bleibt_rot()
+        => AreaRollup.WorstStatePerHost(
+            [Svc("sql01", 2, downtime: true, desc: "a"), Svc("sql01", 2, desc: "b")])["sql01"]
+            .Should().Be(ServiceState.Critical);
+
+    [Fact]
+    public void Ein_WARN_in_Wartung_bleibt_WARN()
+        => AreaRollup.WorstStatePerHost([Svc("sw01", 1, downtime: true)])["sw01"]
+            .Should().Be(ServiceState.Warning);
+
+    [Fact]
+    public void Wartung_wird_als_solche_benannt()
+        => AreaRollup.HandledHosts([Svc("sql01", 2, downtime: true)])["sql01"]
+            .Should().Be(HandledReason.InDowntime);
+
+    /// <summary>
+    /// Trifft beides zu, gewinnt die Wartung: Sie erklaert die Lage
+    /// vollstaendig (geplant, endet zu einer bekannten Zeit), waehrend
+    /// „quittiert" nur sagt, dass jemand hingesehen hat.
+    /// </summary>
+    [Fact]
+    public void Wartung_sticht_Quittierung()
+        => AreaRollup.HandledHosts([Svc("sql01", 2, ack: true, downtime: true)])["sql01"]
+            .Should().Be(HandledReason.InDowntime);
+
+    [Fact]
+    public void Zwei_CRITs_einer_quittiert_einer_in_Wartung_nennen_die_Wartung()
+        => AreaRollup.HandledHosts(
+            [Svc("sql01", 2, ack: true, desc: "a"), Svc("sql01", 2, downtime: true, desc: "b")])
+            ["sql01"].Should().Be(HandledReason.InDowntime);
+
     [Fact]
     public void Quittierte_Hosts_werden_benannt()
-        => AreaRollup.HandledHosts([Svc("sql01", 2, ack: true)])
-            .Should().BeEquivalentTo(["sql01"]);
+        => AreaRollup.HandledHosts([Svc("sql01", 2, ack: true)])["sql01"]
+            .Should().Be(HandledReason.Acknowledged);
 
     /// <summary>
     /// Ein Host mit einem quittierten UND einem offenen CRIT ist nicht

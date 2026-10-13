@@ -151,23 +151,29 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
      zurück statt Unterbereiche mitzulöschen oder Hosts stillschweigend
      freizusetzen. `AreaRollup` schützt zusätzlich per `visited`-Satz gegen einen
      Zyklus im Baum — die Datenbank verhindert ihn nicht, ein `UPDATE` reicht.
-  5. **Ein quittierter CRIT zählt als WARN** (`AreaRollup.EffectiveState`). Die
+  5. **Ein bekannter CRIT zählt als WARN** — quittiert *oder* in einem
+     Wartungsfenster (`AreaRollup.IsHandled`/`EffectiveState`). Die
      Bereichsfarbe beantwortet nicht „welchen Status hat der Check", sondern
-     „liegt hier etwas, um das sich noch niemand kümmert" — und ein
-     Acknowledge heißt genau: gesehen, jemand ist dran. Bliebe der Standort
-     rot, wäre die Karte nach dem ersten schlechten Tag durchgehend rot und
-     sagte nichts mehr; das Quittieren, das in Checkmk für diesen Zweck da ist,
-     hätte sichtbar keine Wirkung. Vier Punkte dazu:
-     - **Nur bis WARN, nie bis OK.** Das Problem besteht weiter, es ist nur in
-       Arbeit. Grün wäre eine Lüge, und `ProblemCount` zählt es weiter mit.
+     „liegt hier etwas, um das sich noch niemand kümmert" — und beides sagt das
+     Gegenteil: ein Acknowledge „gesehen, jemand ist dran", eine Downtime „das
+     ist so geplant". Bliebe der Standort rot, wäre die Karte nach dem ersten
+     schlechten Tag durchgehend rot und sagte nichts mehr; Quittieren und
+     Wartungsfenster, die in Checkmk für diesen Zweck da sind, hätten sichtbar
+     keine Wirkung. Fünf Punkte dazu:
+     - **Nur bis WARN, nie bis OK.** Das Problem besteht weiter — ein Server in
+       Wartung ist tatsächlich nicht erreichbar. Grün wäre eine Lüge, und
+       `ProblemCount` zählt es weiter mit.
      - **Nur CRIT wird herabgestuft.** Ein quittierter WARN bleibt WARN — ihn
        auf OK zu ziehen hieße, ihn verschwinden zu lassen.
-     - **Ein offener CRIT neben einem quittierten hält den Host rot.** Sonst
+     - **Ein offener CRIT neben einem bekannten hält den Host rot.** Sonst
        verdeckte ein einziges Acknowledge den noch unbearbeiteten Ausfall.
      - **Die Herabstufung ist sichtbar**, nicht still: Die Host-Zeile im
-       aufgeklappten Bereich schreibt „quittiert" dazu (`HandledHosts`,
-       `AreaHostViewModel.IsHandled`). Ohne den Vermerk sähe ein quittierter
-       Ausfall aus wie eine gewöhnliche Warnung.
+       aufgeklappten Bereich schreibt „quittiert" bzw. „in Wartung" dazu
+       (`HandledHosts` → `HandledReason`, `AreaHostViewModel.Handled`). Ohne den
+       Vermerk sähe ein bekannter Ausfall aus wie eine gewöhnliche Warnung.
+     - **Wartung sticht Quittierung**, wenn beides zutrifft: Sie erklärt die
+       Lage vollständig (geplant, endet zu einer bekannten Zeit), während
+       „quittiert" nur sagt, dass jemand hingesehen hat.
      **Die Liste im Status-Tab bleibt unberührt** — dort ist „CRIT ist CRIT"
      die richtige Antwort, und die Quittierung steht ohnehin in einer eigenen
      Spalte. Tray-Symbol und Benachrichtigungen ebenfalls: Sie hängen an

@@ -172,7 +172,7 @@ public sealed partial class AreaViewModel : ViewModelBase
     /// </summary>
     private void FillAssignedHosts(AreaSnapshot snapshot,
         IReadOnlyDictionary<string, ServiceState> worstPerHost,
-        IReadOnlySet<string> handled)
+        IReadOnlyDictionary<string, HandledReason> handled)
     {
         var perArea = new Dictionary<int, List<AreaHostViewModel>>();
 
@@ -184,7 +184,7 @@ public sealed partial class AreaViewModel : ViewModelBase
             var inFilter = worstPerHost.TryGetValue(host, out var state);
             (perArea.TryGetValue(areaId, out var list) ? list : perArea[areaId] = [])
                 .Add(new AreaHostViewModel(host, inFilter ? state : ServiceState.Unknown, inFilter,
-                    inFilter && handled.Contains(host)));
+                    inFilter && handled.TryGetValue(host, out var why) ? why : null));
         }
 
         foreach (var (areaId, node) in _byId)
