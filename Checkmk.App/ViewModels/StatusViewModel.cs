@@ -18,6 +18,12 @@ public sealed partial class StatusViewModel : ViewModelBase
     private readonly IHostOsCache _osCache;
     private readonly DispatcherTimer _timer;
     private List<ServiceStatus> _allServices = [];
+
+    /// <summary>Zeilen fuer Tabelle und Baum: <see cref="_allServices"/>, aber
+    /// mit einer Host-Zeile anstelle der Services jedes Hosts, der nicht UP ist
+    /// (<see cref="BuildListRows"/>). Tray, Benachrichtigungen und Bereichs-Rollup
+    /// arbeiten weiter auf <see cref="_allServices"/>.</summary>
+    private List<ServiceStatus> _listRows = [];
     private Dictionary<string, OsFamily> _osByHost = [];
 
     /// <summary>OS-Familie fuer einen Host. Bevorzugt das Custom-Attribute
@@ -67,6 +73,7 @@ public sealed partial class StatusViewModel : ViewModelBase
         IReadOnlyDictionary<string, OsFamily>? osByHost = null)
     {
         _allServices = services;
+        _listRows = services;
         _osByHost = osByHost is null
             ? new Dictionary<string, OsFamily>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, OsFamily>(osByHost, StringComparer.OrdinalIgnoreCase);
@@ -346,6 +353,7 @@ public sealed partial class StatusViewModel : ViewModelBase
     /// </summary>
     private sealed record RefreshSnapshot(
         List<ServiceStatus> All,
+        List<ServiceStatus> ListRows,
         List<ServiceStatus> Visible,
         Dictionary<string, OsFamily> OsByHost,
         int HostCount, int HostsUp, int HostsDown,
@@ -421,13 +429,14 @@ public sealed partial class StatusViewModel : ViewModelBase
                     .GroupBy(x => x.HostName)
                     .ToDictionary(g => g.Key, g => g.First().Os);
 
-                var visible = Project(all, criteria);
+                var listRows = BuildListRows(all, hosts);
+                var visible = Project(listRows, criteria);
 
                 ct.ThrowIfCancellationRequested();
                 ReportStage(run, ProjectSegmentEnd, "Zeige an…");
 
                 return new RefreshSnapshot(
-                    all, visible, osByHost,
+                    all, listRows, visible, osByHost,
                     hosts.Count,
                     hosts.Count(h => h.HostState == HostState.Up),
                     hosts.Count(h => h.HostState != HostState.Up),
@@ -446,6 +455,7 @@ public sealed partial class StatusViewModel : ViewModelBase
             ServicesCrit = snapshot.ServicesCrit;
 
             _allServices = snapshot.All;
+            _listRows = snapshot.ListRows;
             _osByHost = snapshot.OsByHost;
             RememberPayloadSizes(snapshot.HostBytes, snapshot.ServiceBytes);
 
@@ -618,6 +628,19 @@ public sealed partial class StatusViewModel : ViewModelBase
             ? $"{bytes / (1024.0 * 1024.0):F1} MB"
             : $"{bytes / 1024.0:F0} KB";
 
+    // Eine Host-Zeile (ServiceStatus.IsHostRow) ist kein Service — ihre
+    // Beschreibung „Host" an den Service-Endpunkt zu schicken liefe ins Leere.
+    private static Task AcknowledgeAsync(CheckmkClient client, ServiceStatus row, string comment)
+        => row.IsHostRow
+            ? client.AcknowledgeHostProblemAsync(row.HostName, comment)
+            : client.AcknowledgeServiceProblemAsync(row.HostName, row.Description, comment);
+
+    private static Task ScheduleDowntimeAsync(CheckmkClient client, ServiceStatus row,
+        DateTimeOffset start, DateTimeOffset end, string comment)
+        => row.IsHostRow
+            ? client.ScheduleHostDowntimeAsync(row.HostName, start, end, comment)
+            : client.ScheduleServiceDowntimeAsync(row.HostName, row.Description, start, end, comment);
+
     /// <summary>Acknowledged das aktuell gewaehlte Service-Problem und aktualisiert.
     /// Die <c>CanWrite</c>-Pruefung ist Absicherung gegen Wege, die an der
     /// ausgeblendeten UI vorbeigehen (Hotkeys, Plugins).</summary>
@@ -630,7 +653,7 @@ public sealed partial class StatusViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await client.AcknowledgeServiceProblemAsync(svc.HostName, svc.Description, comment);
+            await AcknowledgeAsync(client, svc, comment);
             StatusMessage = $"Acknowledged: {svc.HostName} / {svc.Description}.";
             await RefreshAsync();
         }
@@ -652,7 +675,7 @@ public sealed partial class StatusViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await client.ScheduleServiceDowntimeAsync(svc.HostName, svc.Description, start, end, comment);
+            await ScheduleDowntimeAsync(client, svc, start, end, comment);
             StatusMessage = $"Downtime bis {end:HH:mm} gesetzt: {svc.HostName} / {svc.Description}.";
             await RefreshAsync();
         }
@@ -674,7 +697,9 @@ public sealed partial class StatusViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await client.AddServiceCommentAsync(svc.HostName, svc.Description, comment, persistent);
+            await (svc.IsHostRow
+                ? client.AddHostCommentAsync(svc.HostName, comment, persistent)
+                : client.AddServiceCommentAsync(svc.HostName, svc.Description, comment, persistent));
             StatusMessage = $"Kommentar gespeichert: {svc.HostName} / {svc.Description}.";
             await RefreshAsync();
         }
@@ -703,7 +728,7 @@ public sealed partial class StatusViewModel : ViewModelBase
                 {
                     done++;
                     StatusMessage = $"Ack {done}/{services.Count}: {svc.HostName} / {svc.Description}";
-                    await client.AcknowledgeServiceProblemAsync(svc.HostName, svc.Description, comment);
+                    await AcknowledgeAsync(client, svc, comment);
                 }
                 catch (Exception ex)
                 {
@@ -739,12 +764,13 @@ public sealed partial class StatusViewModel : ViewModelBase
 
         // Nur quittierte anfassen — ein Aufruf fuer einen Service ohne
         // Quittierung ist wirkungslos und erzeugt nur Fehlermeldungen.
+        var hostRows = services.Where(s => s.IsAcknowledged && s.IsHostRow).ToList();
         var byHost = services
-            .Where(s => s.IsAcknowledged)
+            .Where(s => s.IsAcknowledged && !s.IsHostRow)
             .GroupBy(s => s.HostName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (byHost.Count == 0)
+        if (byHost.Count == 0 && hostRows.Count == 0)
         {
             StatusMessage = "Kein markierter Service ist quittiert.";
             return;
@@ -755,6 +781,21 @@ public sealed partial class StatusViewModel : ViewModelBase
         try
         {
             IsBusy = true;
+            foreach (var row in hostRows)
+            {
+                try
+                {
+                    StatusMessage = $"Quittierung entfernen: {row.HostName} (Host)";
+                    await client.RemoveHostAcknowledgementAsync(row.HostName);
+                    done++;
+                }
+                catch (Exception ex)
+                {
+                    errors++;
+                    Log.Warn(ex, "Ack-Entfernen fehlgeschlagen fuer Host {Host}.", row.HostName);
+                }
+            }
+
             foreach (var group in byHost)
             {
                 var descriptions = group.Select(s => s.Description).ToList();
@@ -798,7 +839,7 @@ public sealed partial class StatusViewModel : ViewModelBase
                 {
                     done++;
                     StatusMessage = $"Downtime {done}/{services.Count}: {svc.HostName} / {svc.Description}";
-                    await client.ScheduleServiceDowntimeAsync(svc.HostName, svc.Description, start, end, comment);
+                    await ScheduleDowntimeAsync(client, svc, start, end, comment);
                 }
                 catch (Exception ex)
                 {
@@ -857,7 +898,39 @@ public sealed partial class StatusViewModel : ViewModelBase
         return [.. q.OrderByDescending(s => s.State).ThenBy(s => s.HostName)];
     }
 
-    private void ApplyFilter() => ApplyVisible(Project(_allServices, CurrentCriteria()));
+    private void ApplyFilter() => ApplyVisible(Project(_listRows, CurrentCriteria()));
+
+    /// <summary>
+    /// Ersetzt die Services jedes Hosts, der DOWN oder UNREACHABLE ist, durch
+    /// eine einzige Host-Zeile (<see cref="ServiceStatus.ForHost"/>).
+    ///
+    /// <para>Ist der Host weg, laufen seine Checks nicht mehr, und ihr Zustand
+    /// ist der von vor dem Ausfall. Real: 19-SW05 war down, die Liste zeigte
+    /// ihn gelb wegen eines Inventur-Checks und „Check_MK" gruen — der Ausfall
+    /// selbst stand nirgends. Die Folge-Checks auszublenden ist dieselbe
+    /// Entscheidung, die Checkmk mit „unreachable" trifft: die Ursache melden,
+    /// nicht ihre Symptome.</para>
+    ///
+    /// <para>Ein Host ohne Namen (alte Spaltenzuordnung, kaputte Antwort)
+    /// bleibt aussen vor — sonst verschwaenden keine Services, aber eine
+    /// namenlose rote Zeile kaeme dazu.</para>
+    /// </summary>
+    internal static List<ServiceStatus> BuildListRows(
+        List<ServiceStatus> services, IReadOnlyList<HostStatus> hosts)
+    {
+        var notUp = hosts
+            .Where(h => h.HostState is HostState.Down or HostState.Unreachable
+                        && h.HostName.Length > 0)
+            .GroupBy(h => h.HostName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        if (notUp.Count == 0)
+            return services;
+
+        var rows = new List<ServiceStatus>(services.Count);
+        rows.AddRange(services.Where(s => !notUp.ContainsKey(s.HostName)));
+        rows.AddRange(notUp.Values.Select(ServiceStatus.ForHost));
+        return rows;
+    }
 
     /// <summary>Tauscht die sichtbaren Zeilen aus — ein einziges Reset-Event statt
     /// zehntausender <c>Add</c>s (siehe <see cref="BulkObservableCollection{T}"/>).</summary>
@@ -895,7 +968,7 @@ public sealed partial class StatusViewModel : ViewModelBase
     /// </summary>
     private void BuildTree()
     {
-        IEnumerable<ServiceStatus> q = _allServices;
+        IEnumerable<ServiceStatus> q = _listRows;
 
         if (Filters.Active is { } activeFilter)
             q = q.Where(s => activeFilter.Matches(s.HostName, s.HostAlias));

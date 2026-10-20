@@ -99,6 +99,15 @@ für das gesamte Muster: kroste-avalonia-Skill (Klemmbrett-Scaffold).
   werden geloggt und am Ende summiert. Spalte **Age** (Zeit seit letzter Statusänderung)
   statt „Letzter Check". **CSV-Export** der gefilterten Ansicht via `CsvExporter`
   (Semikolon, UTF-8-BOM, RFC-4180-Quoting).
+- **Host DOWN/UNREACHABLE ersetzt seine Services** (`StatusViewModel.BuildListRows`,
+  `ServiceStatus.ForHost`): In Tabelle und Baum steht eine rote Zeile „Host" mit
+  Status „Down", die Services des Hosts verschwinden — ihr Zustand ist veraltet,
+  solange er weg ist (real: 19-SW05 down, Liste zeigte ihn gelb wegen der Inventur).
+  Ack/Downtime/Kommentar/Ack entfernen auf dieser Zeile gehen an die
+  **Host**-Endpunkte (`IsHostRow`). Tray, Benachrichtigungen und Bereichs-Rollup
+  sehen weiter die rohen Services (`_allServices`), nur die Liste (`_listRows`)
+  ist umgebaut. Die Host-Abfrage liest den Namen aus der Spalte `name` — mit
+  `host_name` war `HostStatus.HostName` in der Host-Liste immer leer.
 - **Refresh läuft im Hintergrund** (seit v1.8.0). Bei ungefiltertem Blick auf ~32.000
   Checks stand die App vorher mehrere Sekunden. Drei Ursachen, alle beseitigt — und
   alle drei sind leicht wieder einzubauen:

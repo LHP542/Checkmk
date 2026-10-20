@@ -98,7 +98,11 @@ public sealed class CheckmkClient
         LivestatusHostFilter? filter = null, CancellationToken ct = default,
         IProgress<TransferProgress>? progress = null)
     {
-        var cols = new[] { "name", "state", "plugin_output", "acknowledged", "scheduled_downtime_depth" };
+        var cols = new[]
+        {
+            "name", "alias", "state", "plugin_output", "acknowledged", "scheduled_downtime_depth",
+            "last_check", "last_state_change"
+        };
         var url = "domain-types/host/collections/all?" + ColumnsQuery(cols, hostNameCol: "name");
 
         // Livestatus-Query auf dem host-Endpunkt: die Spalten heissen hier

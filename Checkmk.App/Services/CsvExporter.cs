@@ -30,7 +30,7 @@ public static class CsvExporter
             sb.Append(Esc(s.HostAlias ?? string.Empty)).Append(Delimiter);
             sb.Append(Esc(s.DisplayNameOrDescription)).Append(Delimiter);
             sb.Append(Esc(s.Description)).Append(Delimiter);
-            sb.Append(Esc(s.ServiceState.ToString())).Append(Delimiter);
+            sb.Append(Esc(s.StateLabel)).Append(Delimiter);
             sb.Append(Esc(s.PluginOutput ?? string.Empty)).Append(Delimiter);
             sb.Append(s.IsAcknowledged ? "ja" : "nein").Append(Delimiter);
             sb.Append(s.InDowntime ? "ja" : "nein").Append(Delimiter);

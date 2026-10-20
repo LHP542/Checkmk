@@ -48,8 +48,14 @@ public sealed record HostAttributes
 /// </summary>
 public sealed record HostStatus
 {
-    [JsonPropertyName("host_name")]
+    /// <summary>Auf der host-Tabelle heisst die Spalte <c>name</c>, nicht
+    /// <c>host_name</c> — mit dem alten Namen blieb das Feld in der Host-Liste
+    /// stillschweigend leer.</summary>
+    [JsonPropertyName("name")]
     public string HostName { get; init; } = string.Empty;
+
+    [JsonPropertyName("alias")]
+    public string? Alias { get; init; }
 
     /// <summary>0 = UP, 1 = DOWN, 2 = UNREACHABLE.</summary>
     [JsonPropertyName("state")]
@@ -63,6 +69,12 @@ public sealed record HostStatus
 
     [JsonPropertyName("scheduled_downtime_depth")]
     public int ScheduledDowntimeDepth { get; init; }
+
+    [JsonPropertyName("last_check")]
+    public long LastCheckUnix { get; init; }
+
+    [JsonPropertyName("last_state_change")]
+    public long LastStateChangeUnix { get; init; }
 
     [JsonIgnore]
     public HostState HostState => State switch

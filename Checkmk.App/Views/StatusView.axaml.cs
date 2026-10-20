@@ -205,7 +205,8 @@ public partial class StatusView : UserControl
     {
         var host = GetTargetHostName();
         if (string.IsNullOrEmpty(host)) return null;
-        var svc = GetTargetService();
+        // Eine Host-Zeile (Host DOWN) ist fuer Plugins ein Host-Ziel, kein Service.
+        var svc = GetTargetService() is { IsHostRow: false } s ? s : null;
         var owner = TopLevel.GetTopLevel(this) as Window;
         return new ContextMenuTarget(
             svc is null ? ContextMenuLocation.StatusHostNode : ContextMenuLocation.StatusServiceRow,
@@ -294,7 +295,10 @@ public partial class StatusView : UserControl
         if (DataContext is not StatusViewModel vm || vm.SelectedService is null) return;
         var svc = vm.SelectedService;
         var web = App.Services!.GetRequiredService<CheckmkWebLinker>();
-        web.OpenServiceView(svc.HostName, svc.Description);
+        if (svc.IsHostRow)
+            web.OpenHostView(svc.HostName);
+        else
+            web.OpenServiceView(svc.HostName, svc.Description);
     }
 
     // Remote-Tools sind Admin-Handgriffe, kein „Gucken" — im Viewer-Modus zu.

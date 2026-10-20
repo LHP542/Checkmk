@@ -55,6 +55,45 @@ public sealed record ServiceStatus
         _ => ServiceState.Unknown
     };
 
+    /// <summary>
+    /// Gesetzt nur auf der Ersatzzeile fuer einen Host, der nicht UP ist
+    /// (<see cref="ForHost"/>). Eine solche Zeile steht in der Status-Liste
+    /// anstelle seiner Services: Deren Zustand ist veraltet, solange der Host
+    /// nicht erreichbar ist, und ein Switch mit „Warning" an einem Inventur-Check
+    /// verdeckte sonst, dass er komplett weg ist.
+    /// </summary>
+    [JsonIgnore]
+    public HostState? HostRowState { get; init; }
+
+    [JsonIgnore]
+    public bool IsHostRow => HostRowState is not null;
+
+    /// <summary>Text fuer die Status-Spalte: „Down"/„Unreachable" auf einer
+    /// Host-Zeile, sonst der Service-Status.</summary>
+    [JsonIgnore]
+    public string StateLabel => HostRowState?.ToString() ?? ServiceState.ToString();
+
+    /// <summary>Beschreibung der Host-Zeile. Kein echter Service-Name — Aktionen
+    /// auf einer Host-Zeile muessen ueber <see cref="IsHostRow"/> auf die
+    /// Host-Endpunkte umgelenkt werden.</summary>
+    public const string HostRowDescription = "Host";
+
+    /// <summary>Baut die Ersatzzeile fuer einen nicht erreichbaren Host. State 2,
+    /// damit Ampel, Sortierung und „Nur Probleme" ihn wie einen CRIT behandeln.</summary>
+    public static ServiceStatus ForHost(HostStatus host) => new()
+    {
+        HostName = host.HostName,
+        HostAlias = host.Alias,
+        Description = HostRowDescription,
+        State = (int)ServiceState.Critical,
+        PluginOutput = host.PluginOutput,
+        Acknowledged = host.Acknowledged,
+        ScheduledDowntimeDepth = host.ScheduledDowntimeDepth,
+        LastCheckUnix = host.LastCheckUnix,
+        LastStateChangeUnix = host.LastStateChangeUnix,
+        HostRowState = host.HostState
+    };
+
     [JsonIgnore]
     public bool IsAcknowledged => Acknowledged != 0;
 
