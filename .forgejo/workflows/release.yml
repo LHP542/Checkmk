@@ -1,0 +1,168 @@
+# **Forgejo-Fassung von .github/workflows/release.yml.**
+#
+# Erzeugt von Werkzeuge/forgejo/workflow-uebertragen.py am 27.10.2026.
+# Gebaut wird fuer git.flexfamily.cloud; die GitHub-Fassung bleibt vorerst
+# daneben bestehen.
+#
+# **Beide Dateien gehoeren synchron.** Wer an den Bauschritten etwas
+# aendert, zieht es hier nach -- sonst laufen die Seiten auseinander, und
+# das faellt erst auf, wenn eine von beiden rot wird.
+
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------
+  # Windows: self-contained Single-File-EXE -> ZIP
+  # ---------------------------------------------------------------
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish (win-x64)
+        run: >
+          dotnet publish Checkmk.App/Checkmk.App.csproj
+          -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/win
+
+      - name: Zip
+        run: |
+          set -e
+          ver="${{ github.ref_name }}"; ver="${ver#v}"
+          (cd publish/win && zip -qr "$OLDPWD/Checkmk-${ver}-win-x64.zip" .)
+
+      # Signiertes Manifest. Ohne das Secret wird nichts signiert und der Schritt
+      # laeuft still durch — solange in UpdateSignature.PublicKeyBase64 kein
+      # Schluessel steht, prueft das Cockpit ohnehin nicht. Steht dort einer, ist
+      # ein fehlendes update.json ein abgelehntes Update, kein stiller Durchlauf.
+      # Die Pruefung steht im Skript und nicht in einer `if`-Bedingung: Der
+      # `secrets`-Kontext ist in Step-Bedingungen nicht verfuegbar, und der
+      # Umweg ueber eine Job-Variable ist eine Falle mehr als er wert ist.
+      - name: Sign update manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          # **Hier wird nicht signiert — und das ist eine offene Frage.**
+          #
+          # Die GitHub-Fassung ruft an dieser Stelle
+          #  auf. Checkmk.App ist
+          # aber eine WinExe mit Ziel net10.0-windows10.0.19041.0: Sie laeuft
+          # auf dem Linux-Runner nicht, auch nicht self-contained.
+          #
+          # Drei Wege stehen offen:
+          #  1. Die Signierlogik in ein plattformneutrales Hilfsprojekt
+          #     auslagern (net10.0 ohne -windows). Sauber, aber ein Eingriff
+          #     ins Projekt.
+          #  2. Einen Windows-Runner aufstellen (die Windows-VM gibt es).
+          #     Dann muss sie laufen, wenn gebaut wird.
+          #  3. Checkmk-Releases weiter ueber GitHub schneiden.
+          #
+          # Solange nichts entschieden ist, entsteht hier KEIN update.json.
+          # Das Cockpit prueft die Signatur nur, wenn in
+          # UpdateSignature.PublicKeyBase64 ein Schluessel steht -- steht dort
+          # einer, lehnt es dieses Release ab. Deshalb die laute Warnung.
+          echo "::warning::Kein update.json erzeugt — die Signierung braucht Windows (Checkmk.App ist WinExe). Siehe Kommentar in .forgejo/workflows/release.yml."
+      - uses: actions/upload-artifact@v3
+        with:
+          name: windows
+          path: |
+            Checkmk-*-win-x64.zip
+            update.json
+
+  # ---------------------------------------------------------------
+  # Release anlegen und Windows-ZIP anhaengen
+  # ---------------------------------------------------------------
+  release:
+    needs: [ windows ]
+    runs-on: ubuntu-latest
+    steps:
+      # Volle Historie fuer die Tag-Message-Extraktion (annotated tag body).
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      # Release-Body:
+      #  1. RELEASE_NOTES/<tag>.md im Repo (bevorzugt, ausfuehrliche Notes)
+      #  2. sonst: Message des annotated Git-Tags
+      #  3. sonst: leerer Body (softprops setzt dann nur den Tag-Namen)
+      - name: Prepare release notes
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          notes_file="RELEASE_NOTES/${tag}.md"
+          if [ -f "$notes_file" ]; then
+            echo "Using $notes_file"
+            cp "$notes_file" release-body.md
+          else
+            echo "Falling back to annotated tag message of $tag"
+            git tag -l --format='%(contents)' "$tag" > release-body.md
+          fi
+          echo "--- Release-Body ---"
+          cat release-body.md
+
+      # Debug-Hilfe fuer den naechsten Release-Bug: was liegt wirklich in artifacts/?
+      - name: List downloaded artifacts
+        run: find artifacts -type f | sort
+
+      - name: Release anlegen und Dateien anhaengen
+        env:
+          # Forgejo legt diesen Token je Lauf an; er gilt nur fuer dieses
+          # Repo und nur solange der Lauf dauert.
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          # Besteht das Release schon (zweiter Lauf desselben Tags), werden
+          # die Dateien ersetzt statt mit HTTP 409 abzubrechen.
+          id=$(curl -sf -H "Authorization: token $TOKEN" \
+                 "$SERVER/api/v1/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
+               | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null || true)
+          if [ -z "$id" ]; then
+            id=$(curl -sf -X POST -H "Authorization: token $TOKEN" \
+                   -H "Content-Type: application/json" \
+                   -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"Gebaut von Forgejo Actions.\"}" \
+                   "$SERVER/api/v1/repos/$REPO/releases" \
+                 | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          fi
+          [ -n "$id" ] || { echo "Keine Release-ID erhalten"; exit 1; }
+
+          hochgeladen=0
+          for datei in Checkmk-*-win-x64.zip artifacts/**/*.zip; do
+            [ -f "$datei" ] || continue
+            # Gleichnamigen Anhang vorher loeschen, sonst haengt Forgejo die
+            # Datei ein zweites Mal an statt sie zu ersetzen.
+            alt=$(curl -sf -H "Authorization: token $TOKEN" \
+                    "$SERVER/api/v1/repos/$REPO/releases/$id/assets" 2>/dev/null \
+                  | python3 -c "import json,sys; print(next((str(a['id']) for a in json.load(sys.stdin) if a['name']=='$(basename "$datei")'), ''))" 2>/dev/null || true)
+            [ -n "$alt" ] && curl -s -X DELETE -H "Authorization: token $TOKEN" \
+              "$SERVER/api/v1/repos/$REPO/releases/$id/assets/$alt" >/dev/null
+            echo "lade hoch: $datei ($(du -h "$datei" | cut -f1))"
+            curl -sf -X POST -H "Authorization: token $TOKEN" \
+              -F "attachment=@$datei" \
+              "$SERVER/api/v1/repos/$REPO/releases/$id/assets?name=$(basename "$datei")" >/dev/null
+            hochgeladen=$((hochgeladen+1))
+          done
+          # **Ein Release ohne Dateien ist kein Release.** Lieber hier rot
+          # als eine leere Seite, die niemand bemerkt.
+          [ "$hochgeladen" -gt 0 ] || { echo "Keine Datei hochgeladen"; exit 1; }
+          echo "Fertig ($hochgeladen Dateien): $SERVER/$REPO/releases/tag/$TAG"

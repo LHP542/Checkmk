@@ -1,0 +1,50 @@
+# **Forgejo-Fassung von .github/workflows/ci.yml.**
+#
+# Erzeugt von Werkzeuge/forgejo/workflow-uebertragen.py am 27.10.2026.
+# Gebaut wird fuer git.flexfamily.cloud; die GitHub-Fassung bleibt vorerst
+# daneben bestehen.
+#
+# **Beide Dateien gehoeren synchron.** Wer an den Bauschritten etwas
+# aendert, zieht es hier nach -- sonst laufen die Seiten auseinander, und
+# das faellt erst auf, wenn eine von beiden rot wird.
+#
+# Diese Datei muss hier liegen, auch wenn sie unveraendert ist: Sobald
+# .forgejo/workflows existiert, ignoriert Forgejo .github/workflows
+# vollstaendig. Ohne die Kopie laeuft in Forgejo gar keine CI mehr.
+
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-test:
+    # Windows-Runner, seit die App auf net10.0-windows single-target ist
+    # und die Tests App-Klassen referenzieren.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # volle Historie für MinVer
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: NuGet-Cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Checkmk.slnx
+
+      - name: Build
+        run: dotnet build Checkmk.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Checkmk.slnx -c Release --no-build --verbosity normal
