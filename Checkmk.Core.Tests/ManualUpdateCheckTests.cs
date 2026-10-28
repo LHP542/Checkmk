@@ -14,7 +14,7 @@ namespace Checkmk.Core.Tests;
 /// </summary>
 public class ManualUpdateCheckTests
 {
-    private const string ApiUrl = "https://api.github.com/repos/LHP542/Checkmk/releases/latest";
+    private const string ApiUrl = "https://git.flexfamily.de/api/v1/repos/LHP542/Checkmk/releases/latest";
 
     [Fact]
     public async Task Manual_check_reports_up_to_date_for_older_release()

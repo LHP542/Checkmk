@@ -51,8 +51,13 @@ public interface IUpdateChecker
 
 /// <summary>
 /// Fragt <c>GET /repos/{owner}/{repo}/releases/latest</c> ab. Draft- und
-/// Prerelease-Versionen filtert GitHub selbst; wir vertrauen dem Endpunkt.
-/// Trust-Anker: TLS-Zertifikat von <c>api.github.com</c> + Repo-Owner in der URL.
+/// Prerelease-Versionen filtert der Endpunkt selbst; wir vertrauen ihm.
+/// Trust-Anker: TLS-Zertifikat des Servers + Repo-Owner in der URL.
+///
+/// <para>Die Quelle ist seit dem 28.10.2026 <c>git.flexfamily.de</c>; Forgejos
+/// Release-API ist feldgleich zu GitHubs. Auf den Dienstrechnern laeuft
+/// stattdessen der <see cref="FileShareUpdateChecker"/> -- sie laden nichts
+/// aus dem Internet.</para>
 /// </summary>
 public sealed class GitHubReleasesUpdateChecker : IUpdateChecker
 {

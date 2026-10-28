@@ -42,8 +42,10 @@ public sealed class CockpitGlobals
 
     public string HostDefaultDomain { get; init; } = "lhp.intern";
 
+    /// <summary>Update-Kanal. Zeigt seit dem 28.10.2026 auf die eigene Forge;
+    /// die Dienstrechner holen ihre Updates ohnehin aus dem Samba-Share.</summary>
     public string UpdateChannelUrl { get; init; } =
-        "https://api.github.com/repos/LHP542/Checkmk/releases/latest";
+        "https://git.flexfamily.de/api/v1/repos/LHP542/Checkmk/releases/latest";
 
     /// <summary>Kandidaten-Keys fuer die OS-Familie im Host-Config-Dict, erster
     /// Treffer gewinnt.</summary>

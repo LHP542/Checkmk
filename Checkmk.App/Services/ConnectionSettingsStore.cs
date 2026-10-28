@@ -196,8 +196,14 @@ internal sealed class Bootstrap
         @"\\Samba01\542$\5424_IT-Basis-Dienste\_Oste\CheckMK\settings.json";
 
     private const string DefaultSharedHostsPath = @"\\Samba01\542$\5424_IT-Basis-Dienste\_Oste\CheckMK\hosts.json";
+    // **Der Standard-Kanal zeigt auf die eigene Forge**, nicht mehr auf
+    // GitHub (Lars am 28.10.2026: GitHub wird abgeschaltet). Fuer die
+    // Dienstrechner ist das ohnehin zweitrangig -- sie laden nichts aus dem
+    // Internet und holen ihre Updates aus dem Samba-Share
+    // (FileShareUpdateChecker). Der Kanal hier traegt den Fall, dass die App
+    // ausserhalb davon laeuft.
     private const string DefaultUpdateChannelUrl =
-        "https://api.github.com/repos/LHP542/Checkmk/releases/latest";
+        "https://git.flexfamily.de/api/v1/repos/LHP542/Checkmk/releases/latest";
     private const string DefaultDomain = "lhp.intern";
 
     /// <summary>
