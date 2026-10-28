@@ -1,7 +1,7 @@
 # **Forgejo-Fassung von .github/workflows/release.yml.**
 #
 # Erzeugt von Werkzeuge/forgejo/workflow-uebertragen.py am 27.10.2026.
-# Gebaut wird fuer git.flexfamily.cloud; die GitHub-Fassung bleibt vorerst
+# Gebaut wird fuer git.flexfamily.de; die GitHub-Fassung bleibt vorerst
 # daneben bestehen.
 #
 # **Beide Dateien gehoeren synchron.** Wer an den Bauschritten etwas
