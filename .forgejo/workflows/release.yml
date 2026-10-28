@@ -45,10 +45,21 @@ jobs:
           ver="${{ github.ref_name }}"; ver="${ver#v}"
           (cd publish/win && zip -qr "$OLDPWD/Checkmk-${ver}-win-x64.zip" .)
 
-      # Signiertes Manifest. Ohne das Secret wird nichts signiert und der Schritt
-      # laeuft still durch — solange in UpdateSignature.PublicKeyBase64 kein
-      # Schluessel steht, prueft das Cockpit ohnehin nicht. Steht dort einer, ist
-      # ein fehlendes update.json ein abgelehntes Update, kein stiller Durchlauf.
+      # Signiertes Manifest.
+      #
+      # **In Forgejo ist UPDATE_SIGNING_KEY bewusst nicht hinterlegt** — Lars
+      # am 28.10.2026: *»braucht es nicht mehr, da die updates local gezogen
+      # werden«*. Das Cockpit holt seine Updates aus dem Fileshare
+      # (FileShareUpdateChecker), und UpdateSignature.PublicKeyBase64 ist
+      # leer, die Pruefung also gar nicht eingeschaltet. Wer das Secret hier
+      # vermisst, hat nichts uebersehen.
+      #
+      # Der Schritt bleibt trotzdem stehen: Sobald ein Schluessel im Binary
+      # steht, ist ein fehlendes update.json ein abgelehntes Update, kein
+      # stiller Durchlauf — dann muss das Release eines mitbringen, und zwar
+      # ohne dass jemand den Workflow erst wieder zusammenbaut. Ohne Secret
+      # kostet er eine `if`-Abfrage.
+      #
       # Die Pruefung steht im Skript und nicht in einer `if`-Bedingung: Der
       # `secrets`-Kontext ist in Step-Bedingungen nicht verfuegbar, und der
       # Umweg ueber eine Job-Variable ist eine Falle mehr als er wert ist.
