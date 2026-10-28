@@ -56,26 +56,27 @@ jobs:
         env:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
-          # **Hier wird nicht signiert — und das ist eine offene Frage.**
+          # **Signiert auf Linux.** Die Logik steckte in Checkmk.App, und das
+          # ist eine WinExe mit Ziel net10.0-windows; der Aufruf lief auf dem
+          # Forgejo-Runner nicht. Der Code war aber nie Windows-gebunden
+          # (ECDsa, JSON, NLog), er lag nur im falschen Projekt.
+          # Checkmk.SignTool bindet dieselbe Datei per Link ein und baut mit
+          # net10.0.
           #
-          # Die GitHub-Fassung ruft an dieser Stelle
-          #  auf. Checkmk.App ist
-          # aber eine WinExe mit Ziel net10.0-windows10.0.19041.0: Sie laeuft
-          # auf dem Linux-Runner nicht, auch nicht self-contained.
-          #
-          # Drei Wege stehen offen:
-          #  1. Die Signierlogik in ein plattformneutrales Hilfsprojekt
-          #     auslagern (net10.0 ohne -windows). Sauber, aber ein Eingriff
-          #     ins Projekt.
-          #  2. Einen Windows-Runner aufstellen (die Windows-VM gibt es).
-          #     Dann muss sie laufen, wenn gebaut wird.
-          #  3. Checkmk-Releases weiter ueber GitHub schneiden.
-          #
-          # Solange nichts entschieden ist, entsteht hier KEIN update.json.
-          # Das Cockpit prueft die Signatur nur, wenn in
-          # UpdateSignature.PublicKeyBase64 ein Schluessel steht -- steht dort
-          # einer, lehnt es dieses Release ab. Deshalb die laute Warnung.
-          echo "::warning::Kein update.json erzeugt — die Signierung braucht Windows (Checkmk.App ist WinExe). Siehe Kommentar in .forgejo/workflows/release.yml."
+          # Ohne Secret wird nichts signiert und der Schritt laeuft still
+          # durch: Solange in UpdateSignature.PublicKeyBase64 kein Schluessel
+          # steht, prueft das Cockpit ohnehin nicht.
+          set -e
+          if [ -z "${UPDATE_SIGNING_KEY:-}" ]; then
+            echo "Kein UPDATE_SIGNING_KEY hinterlegt - update.json wird nicht erzeugt."
+            exit 0
+          fi
+          ver="${{ github.ref_name }}"; ver="${ver#v}"
+          zip="Checkmk-${ver}-win-x64.zip"
+          dotnet run --project Checkmk.SignTool -c Release -- \
+            "$zip" "$ver" "$UPDATE_SIGNING_KEY" update.json
+          test -f update.json || { echo "update.json wurde nicht erzeugt."; exit 1; }
+          cat update.json
       - uses: actions/upload-artifact@v3
         with:
           name: windows

@@ -3,5 +3,6 @@
   <Project Path="Checkmk.Core/Checkmk.Core.csproj" />
   <Project Path="Checkmk.Data/Checkmk.Data.csproj" />
   <Project Path="Checkmk.App/Checkmk.App.csproj" />
+  <Project Path="Checkmk.SignTool/Checkmk.SignTool.csproj" />
   <Project Path="Checkmk.Core.Tests/Checkmk.Core.Tests.csproj" />
 </Solution>

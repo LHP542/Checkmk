@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Signiert das Update-Manifest — und zwar auf JEDEM System.
+
+    Die Logik dafuer steckte bisher in Checkmk.App, und die ist eine WinExe
+    mit Ziel net10.0-windows. Der Release-Workflow rief
+    `Checkmk.App.exe` mit dem Schalter sign-update auf, was auf dem Linux-Runner der
+    eigenen Forge nicht laeuft.
+
+    **Der Code war nie Windows-gebunden.** UpdateSignature.cs benutzt
+    ECDsa, System.Text.Json und NLog, sonst nichts; die beiden Typen
+    UpdateManifest und SignedUpdateManifest stehen in derselben Datei.
+    Sie lag nur im falschen Projekt.
+
+    Deshalb hier ein eigenes Werkzeug mit dem Standardziel aus
+    Directory.Build.props (net10.0, ohne -windows). Die Datei wird
+    **verlinkt, nicht kopiert** — es gibt sie weiterhin genau einmal, und
+    eine Aenderung wirkt an beiden Stellen.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>checkmk-sign</AssemblyName>
+    <RootNamespace>Checkmk.SignTool</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Checkmk.App/Services/UpdateSignature.cs" Link="UpdateSignature.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLog" />
+  </ItemGroup>
+
+</Project>
