@@ -31,6 +31,7 @@ public class SettingsPathResolverTests
     [Fact]
     public void Foreign_user_profile_is_rejected()
     {
+        WindowsOnly.Require();
         var fremd = @"C:\Users\OsteL\AppData\Roaming\Kroste\Checkmk\settings.json";
 
         SettingsPathResolver.Resolve(fremd, LocalDefault, MeierProfile).Should().Be(LocalDefault);
@@ -71,13 +72,17 @@ public class SettingsPathResolverTests
 
     [Fact]
     public void A_similarly_named_profile_is_still_foreign()
-        => SettingsPathResolver.PointsIntoForeignUserProfile(
-            @"C:\Users\Meier2\x.json", MeierProfile).Should().BeTrue(
-            "Meier2 ist nicht Meier — der Praefix-Vergleich muss auf der Trennzeichen-Grenze enden");
+    {
+        WindowsOnly.Require();
+        SettingsPathResolver.PointsIntoForeignUserProfile(
+        @"C:\Users\Meier2\x.json", MeierProfile).Should().BeTrue(
+        "Meier2 ist nicht Meier — der Praefix-Vergleich muss auf der Trennzeichen-Grenze enden");
+    }
 
     [Fact]
     public void Environment_variables_are_expanded()
     {
+        WindowsOnly.Require();
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
         SettingsPathResolver.Resolve(@"%APPDATA%\Kroste\Checkmk\settings.json", LocalDefault, null)

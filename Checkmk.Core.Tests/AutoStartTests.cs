@@ -36,6 +36,7 @@ public class AutoStartTests
     [Fact]
     public void Der_Pfad_kommt_nie_aus_Assembly_Location()
     {
+        WindowsOnly.Require();
         // Im Single-File-Build ist Assembly.Location LEER; ein daraus gebauter
         // Autostart-Eintrag zeigte ins Nichts. Environment.ProcessPath ist der
         // einzige Weg, der dort funktioniert — und genau den nutzt AutoStart.
